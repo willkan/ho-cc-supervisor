@@ -13,7 +13,10 @@ Supervisor-ME is an automated code verification system designed to prevent "verb
 # Run single verification (generates .proof/latest.json)
 ./verify.sh
 
-# Run complete test suite (22 tests covering all components)
+# Generate challenge file when verification fails
+./challenge.sh
+
+# Run complete test suite (all components including challenge)
 ./test-all.sh
 
 # Run example-app tests directly
@@ -46,7 +49,7 @@ cat .proof/latest.json
 
 ## Architecture Overview
 
-The system consists of four main components that work together:
+The system consists of five main components that work together:
 
 1. **verify.sh**: Core verification engine
    - Runs tests in example-app/
@@ -70,6 +73,12 @@ The system consists of four main components that work together:
    - Tests all components including failure scenarios
    - Temporarily modifies code to verify failure detection
    - Self-restoring after tests complete
+
+5. **challenge.sh**: Pressure loop generator
+   - Creates CHALLENGE.md when verification fails
+   - Requests explanation for test failures
+   - Includes terminal evidence in challenge file
+   - Auto-removes challenge when tests pass
 
 ## Evidence File Format
 

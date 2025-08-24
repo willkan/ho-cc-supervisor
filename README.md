@@ -13,6 +13,7 @@
 - 🎯 **关键词检测** - 监测输出中的完成关键词并触发验证 (Part 3)
 - ⚠️ **提交验证** - 检测 commit hash 不匹配并显示警告 (Part 3)
 - 📊 **集成测试** - 端到端测试确保所有组件正常工作 (Part 4)
+- 📝 **压力循环** - 验证失败时生成质询文件要求说明 (Part 5)
 - 🎨 **友好界面** - 彩色终端输出，清晰的状态反馈
 
 ## 🚀 快速开始
@@ -43,9 +44,12 @@ cd example-app && npm install && cd ..
 # 启动自动监控（每5秒检查）
 ./monitor.sh --interval 5
 
-# Part 3 新功能：包装任意命令并监测关键词
+# Part 3: 包装任意命令并监测关键词
 node wrapper.js "echo 'task completed'"  # 触发验证
 node wrapper.js "npm test"                # 捕获输出到 session.log
+
+# Part 5: 压力循环 - 生成质询文件
+./challenge.sh  # 失败时生成 CHALLENGE.md，成功时自动清理
 
 # 运行完整测试套件
 ./test-all.sh
@@ -58,8 +62,10 @@ supervisor-me-mvp/
 ├── verify.sh           # 核心验证脚本
 ├── monitor.sh          # 自动监控脚本
 ├── wrapper.js          # Part 3: 命令包装器（关键词检测）
+├── challenge.sh        # Part 5: 质询生成器（压力循环）
 ├── test-all.sh         # 完整测试套件
 ├── session.log         # wrapper.js 生成的日志文件
+├── CHALLENGE.md        # 验证失败时生成的质询文件
 ├── example-app/        # 示例应用
 │   ├── package.json
 │   ├── src/

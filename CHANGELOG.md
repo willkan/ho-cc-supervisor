@@ -2,6 +2,24 @@
 
 All notable changes to Supervisor-ME MVP will be documented in this file.
 
+## [0.3.0] - 2025-08-25
+
+### Added
+- **challenge.sh** - Part 5: 压力循环（简化版）
+  - Generates CHALLENGE.md when verification fails
+  - Includes test failure details and terminal evidence
+  - Requests explanation with three prompts:
+    1. 失败原因（一句话）
+    2. 修复计划
+    3. 预计时间
+  - Auto-removes CHALLENGE.md when tests pass
+  - Integrated into test-all.sh with full test coverage
+
+### Updated
+- test-all.sh now includes challenge.sh testing
+- README.md updated with Part 5 documentation
+- CLAUDE.md updated with challenge.sh commands
+
 ## [0.2.0] - 2025-08-24
 
 ### Added
