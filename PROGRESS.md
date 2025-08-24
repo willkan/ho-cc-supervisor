@@ -1,5 +1,51 @@
 # Progress Tracker
 
+## Part 5: 压力循环（简化版） ✅ COMPLETED
+
+### Implemented Features
+
+#### challenge.sh Script
+✅ **Challenge generation** - Creates CHALLENGE.md when tests fail
+✅ **Failure details** - Includes commit hash, timestamp, and test status
+✅ **Terminal evidence** - Captures last 20 lines of test output
+✅ **Three prompts** - Requests: 失败原因、修复计划、预计时间
+✅ **Auto-cleanup** - Removes CHALLENGE.md when tests pass
+✅ **Status checking** - Reads from .proof/latest.json
+✅ **Exit codes** - Returns 1 on failure, 0 on success
+
+### Testing Results
+
+1. **Challenge Creation** ✅
+   - Broke add() function intentionally
+   - Ran challenge.sh after verification failed
+   - CHALLENGE.md created with all required sections
+
+2. **Challenge Removal** ✅
+   - Fixed add() function
+   - Ran challenge.sh after verification passed
+   - CHALLENGE.md automatically removed
+
+3. **Integration Test** ✅
+   - Added to test-all.sh
+   - Tests both creation and removal scenarios
+   - All tests passing
+
+### Usage
+
+```bash
+# Run after verification fails
+./challenge.sh
+
+# Challenge file location
+cat CHALLENGE.md
+```
+
+### Challenge File Format
+- **验证失败 - 需要说明** header
+- **检测到的问题** section with details
+- **请提供** section with three prompts
+- **终端证据** section with test output
+
 ## Part 2: Auto Monitoring System ✅ COMPLETED
 
 ### Implemented Features
