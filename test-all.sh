@@ -9,10 +9,11 @@ echo "1. Testing verify.sh..."
 # Test 2: Monitor (运行 5 秒)
 echo "2. Testing monitor.sh..."
 # macOS 兼容性: 使用后台进程代替 timeout
-./monitor.sh > /dev/null 2>&1 &
+(./monitor.sh > /dev/null 2>&1 &
 MONITOR_PID=$!
 sleep 5
 kill $MONITOR_PID 2>/dev/null
+wait $MONITOR_PID 2>/dev/null)
 echo "✅ Monitor runs"
 
 # Test 3: Wrapper
