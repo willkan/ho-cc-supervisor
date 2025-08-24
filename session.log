@@ -1,0 +1,55 @@
+
+============================================================
+[2025-08-24T15:51:24.029Z] Command: echo 'Hello World'
+============================================================
+Hello World
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:51:43.352Z] Command: bash -c 'echo test pass; sleep 2'
+============================================================
+test pass
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:51:52.642Z] Command: bash -c 'echo all tests pass; sleep 2'
+============================================================
+all tests pass
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:52:02.014Z] Command: bash -c 'echo task completed; sleep 2'
+============================================================
+task completed
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:52:10.665Z] Command: bash -c 'echo work done; sleep 2'
+============================================================
+work done
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:52:19.653Z] Command: bash -c 'echo task finished; sleep 2'
+============================================================
+task finished
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:52:50.661Z] Command: bash -c 'echo work done; sleep 3'
+============================================================
+work done
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T15:54:41.529Z] Command: bash -c 'echo Tests done; sleep 2'
+============================================================
+Tests done
+[WRAPPER] Verification error: Command failed: ./verify.sh
+[WRAPPER] Process exited with code 0
+
+============================================================
+[2025-08-24T16:04:24.195Z] Command: echo done
+============================================================
+done
+[WRAPPER] Process exited with code 0
