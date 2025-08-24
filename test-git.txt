@@ -1,1 +1,1 @@
-Testing git status detection
+Testing git status detectionanother line
