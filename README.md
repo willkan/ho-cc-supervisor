@@ -42,8 +42,9 @@ cd example-app && npm install && cd ..
 # 启动自动监控（每5秒检查）
 ./monitor.sh --interval 5
 
-# 包装命令执行
-node wrapper.js "git commit -m 'feature done'"
+# Part 3 新功能：包装任意命令并监测关键词
+node wrapper.js "echo 'task completed'"  # 触发验证
+node wrapper.js "npm test"                # 捕获输出到 session.log
 
 # 运行完整测试套件
 ./test-all.sh
@@ -55,8 +56,9 @@ node wrapper.js "git commit -m 'feature done'"
 supervisor-me-mvp/
 ├── verify.sh           # 核心验证脚本
 ├── monitor.sh          # 自动监控脚本
-├── wrapper.js          # 命令包装器
+├── wrapper.js          # Part 3: 命令包装器（关键词检测）
 ├── test-all.sh         # 完整测试套件
+├── session.log         # wrapper.js 生成的日志文件
 ├── example-app/        # 示例应用
 │   ├── package.json
 │   ├── src/
@@ -100,9 +102,11 @@ supervisor-me-mvp/
 - `--interval <秒>`: 检查间隔（默认: 5）
 - `--watch <目录>`: 监控目录（默认: example-app）
 
-### wrapper.js
-- 预验证命令: `commit`, `push`
-- 后验证命令: `test`, `build`
+### wrapper.js (Part 3 - 新增)
+- 监控输出关键词: `test pass`, `all tests pass`, `completed`, `done`, `finished`
+- 自动触发验证并检查提交哈希
+- 生成 session.log 日志文件
+- 显示警告: `⚠️ WARNING: COMMIT MISMATCH`
 
 ## 📊 测试覆盖
 
