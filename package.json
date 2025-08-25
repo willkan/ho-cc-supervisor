@@ -1,0 +1,46 @@
+{
+  "name": "supervisor-me",
+  "version": "1.0.0",
+  "description": "Transparent supervisor for Claude Code - ensures code truly works",
+  "main": "lib/super.js",
+  "bin": {
+    "super": "./bin/super",
+    "supervisor-me": "./bin/super"
+  },
+  "scripts": {
+    "test": "cd example-app && npm test",
+    "verify": "./scripts/verify.sh",
+    "monitor": "./scripts/monitor.sh",
+    "test-all": "./test-all.sh"
+  },
+  "keywords": [
+    "supervisor",
+    "claude",
+    "code",
+    "verification",
+    "testing",
+    "proxy",
+    "transparent"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/",
+    "example-app/",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/supervisor-me.git"
+  }
+}

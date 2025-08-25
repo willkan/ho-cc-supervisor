@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+
+/**
+ * Super CLI Entry Point
+ * Transparent supervisor for Claude Code
+ */
+
+require('../lib/super.js');

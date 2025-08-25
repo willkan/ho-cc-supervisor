@@ -1,0 +1,9 @@
+node_modules/
+.super/
+.proof/
+*.log
+.env
+.DS_Store
+archive/
+session.log
+CHALLENGE.md
