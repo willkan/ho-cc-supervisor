@@ -2,7 +2,7 @@
 
 /**
  * Super CLI Entry Point
- * Transparent supervisor for Claude Code
+ * Intelligent dual-Claude supervisor system
  */
 
 require('../lib/super.js');
