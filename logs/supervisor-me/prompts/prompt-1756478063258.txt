@@ -1,0 +1,131 @@
+[2025-08-29T14:34:23.258Z] Supervisor 验证提示
+
+作为代码验证助手，请分析刚刚完成的编程任务。
+
+最近修改的文件:
+- ./test-session-id.sh
+- ./bin/supervisor-me
+- ./.claude/hooks/stop.sh
+- ./logs/supervisor-me/checks/tools.log
+- ./logs/supervisor-me/completions/stop.log
+- ./logs/supervisor-me/intents/intents.log
+文件: ./test-session-id.sh
+```
+#!/bin/bash
+
+echo "============================================"
+echo "测试 Session ID 传递"
+echo "============================================"
+echo
+
+# 测试场景1：通过环境变量传递 Session ID
+echo "1. 测试环境变量传递："
+export SUPERVISOR_SESSION_ID="test-session-123"
+cd /tmp && supervisor-me verify --json 2>&1 | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print('✅ JSON 输出正常')
+except:
+    print('❌ JSON 解析失败')
+"
+unset SUPERVISOR_SESSION_ID
+
+echo
+echo "2. 测试命令行参数传递："
+cd /tmp && supervisor-me verify --json --session "cli-session-456" 2>&1 | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print('✅ JSON 输出正常')
+except:
+    print('❌ JSON 解析失败')
+"
+```
+
+文件: ./bin/supervisor-me
+```
+#!/usr/bin/env node
+
+/**
+ * Supervisor-ME CLI
+ * 双 Claude 智能验证系统的命令行工具
+ */
+
+const { program } = require('commander');
+const path = require('path');
+const fs = require('fs');
+const { execSync, spawn } = require('child_process');
+const packageJson = require('../package.json');
+
+// 获取包的安装路径（用于定位验证器）
+const PACKAGE_ROOT = path.join(__dirname, '..');
+
+// 设置版本和描述
+program
+  .name('supervisor-me')
+  .description('双 Claude 智能验证系统 - 让编程更可靠')
+  .version(packageJson.version);
+
+// verify 命令 - 执行验证（供 hook 调用）
+program
+  .command('verify')
+  .description('执行验证（由 Stop hook 调用）')
+  .option('--json', '输出JSON格式用于hook集成')
+  .option('--silent', '静默模式，只输出结果')
+  .option('--session <id>', 'Session ID（由 supervisor-node 传递）')
+  .action(async (options) => {
+```
+
+文件: ./.claude/hooks/stop.sh
+```
+#!/bin/bash
+# Stop Hook - 调用 supervisor-me CLI 进行验证
+# 使用 --json 格式输出，让 Claude Code 可以注入反馈到对话中
+
+# 读取 Claude Code 传递的 JSON 输入
+if [ ! -t 0 ]; then
+    input=$(cat)
+    # 尝试从 JSON 中提取 session_id
+    claude_session_id=$(echo "$input" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('session_id', ''))" 2>/dev/null)
+fi
+
+# 优先使用 Claude 官方的 session_id，其次使用 supervisor-node 的环境变量
+session_to_use="${claude_session_id:-$SUPERVISOR_SESSION_ID}"
+
+# 执行验证，传递 session ID（如果存在）
+if [ -n "$session_to_use" ]; then
+    result=$(supervisor-me verify --json --session "$session_to_use")
+else
+    result=$(supervisor-me verify --json)
+fi
+
+# 解析结果，如果有问题则写入文件触发自动修复
+if echo "$result" | grep -q "验证发现问题\|测试失败\|错误\|TypeError"; then
+    # 提取 systemMessage 内容
+    message=$(echo "$result" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('systemMessage', ''))" 2>/dev/null)
+    
+    # 根据环境变量决定写入位置
+    if [ -n "$message" ]; then
+        if [ -n "$SUPERVISOR_ISSUES_FILE" ]; then
+            # 使用 supervisor-node 提供的 session 特定文件
+```
+
+
+请执行以下验证：
+1. 检查代码语法是否正确
+2. 评估功能是否实现完整
+3. 识别潜在的问题或改进点
+4. 检查是否有明显的bug或安全问题
+5. 评估代码质量和可维护性
+
+请用以下格式回复：
+【结果】通过/失败
+【说明】详细描述验证发现（可以多行）
+【问题】如有问题，列出具体问题点
+【建议】如有改进空间，给出具体建议
+【亮点】如有值得肯定的地方，也可以提及
+
+请提供详细的验证反馈，帮助开发者了解代码质量。
+
+命令: claude -p

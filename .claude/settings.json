@@ -1,11 +1,46 @@
 {
   "hooks": {
-    "Stop": ".claude/hooks/stop.sh",
-    "PostToolUse": {
-      "Write": ".claude/hooks/post-tool-use.sh",
-      "Edit": ".claude/hooks/post-tool-use.sh",
-      "MultiEdit": ".claude/hooks/post-tool-use.sh"
-    },
-    "UserPromptSubmit": ".claude/hooks/user-prompt-submit.sh"
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/stop.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use.sh $FILE_PATH"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/user-prompt-submit.sh \"$USER_PROMPT\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
   }
 }

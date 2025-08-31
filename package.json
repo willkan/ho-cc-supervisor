@@ -1,42 +1,45 @@
 {
   "name": "supervisor-me",
-  "version": "1.0.0",
-  "description": "Transparent supervisor for Claude Code - ensures code truly works",
-  "main": "lib/super.js",
+  "version": "2.0.0",
+  "description": "双 Claude 智能验证系统 - 让 Claude Code 编程更可靠",
+  "main": "lib/claude-verify-simple.js",
   "bin": {
-    "super": "./bin/super",
-    "supervisor-me": "./bin/super"
+    "supervisor-me": "./bin/supervisor-me",
+    "supervisor-node": "./bin/supervisor-node.js",
+    "supervisor-tmux": "./bin/supervisor-tmux"
   },
   "scripts": {
-    "test": "cd example-app && npm test",
-    "verify": "./scripts/verify.sh",
-    "monitor": "./scripts/monitor.sh",
-    "test-all": "./test-all.sh"
+    "test": "node bin/supervisor-me test",
+    "status": "node bin/supervisor-me status",
+    "show-report": "node bin/supervisor-me show-report"
   },
   "keywords": [
     "supervisor",
     "claude",
-    "code",
+    "claude-code",
     "verification",
     "testing",
-    "proxy",
-    "transparent"
+    "ai-verification",
+    "dual-claude",
+    "hooks",
+    "intelligent-verification"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "chokidar": "^4.0.3",
+    "commander": "^11.1.0",
     "node-pty": "^1.0.0"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=14.0.0"
   },
   "files": [
     "bin/",
     "lib/",
-    "scripts/",
-    "example-app/",
+    ".claude/",
     "README.md",
+    "USAGE_GUIDE.md",
     "LICENSE"
   ],
   "repository": {
