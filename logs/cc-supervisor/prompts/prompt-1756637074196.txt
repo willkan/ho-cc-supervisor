@@ -1,0 +1,111 @@
+[2025-08-31T10:44:34.196Z] CC-Supervisor 验证提示
+
+作为代码验证助手，请分析刚刚完成的编程任务。
+
+用户需求：请帮我实现登录功能，需要密码加密
+
+最近修改的文件:
+- ./test-template.js
+- ./README.md
+- ./README_CN.md
+- ./logs/cc-supervisor/checks/tools.log
+- ./logs/cc-supervisor/completions/stop.log
+- ./logs/cc-supervisor/intents/intents.log
+文件: ./test-template.js
+```
+// 测试文件 - 用于验证CC-Supervisor模版系统
+function login(username, password) {
+    // TODO: 需要加密密码
+    console.log(`Logging in ${username}`);
+    return true;
+}
+
+module.exports = { login };
+```
+
+文件: ./README.md
+```
+# CC-Supervisor (Claude Code Supervisor) 🤖
+
+> AI-powered dual-Claude verification system for automatic code quality improvement
+
+## ✨ What is CC-Supervisor?
+
+**Simply put: We're Claude Code's "Quality Inspector"**
+
+Imagine this:
+- 👷 You use Claude Code for programming (as usual)
+- 🎬 When Claude completes a task, CC-Supervisor automatically activates
+- 🔍 Another Claude (the verifier) checks your code quality
+- 💬 Verification feedback appears directly in your conversation
+
+**Important: We're a transparent proxy - ALL Claude Code features work normally!**
+
+## 🌟 Key Features
+
+**Dual Claude Collaboration Architecture**
+- 🤖 **Worker Claude**: Your regular Claude Code instance
+- 🔍 **Verifier Claude**: Background Claude that verifies code quality
+- 🎯 **Fully Transparent**: Doesn't affect any Claude Code features
+- ⚡ **Smart Verification**: Uses claude -p mode for fast verification
+
+## 🎯 Design Philosophy
+
+**"Verify Completion, Not Supervise Process"**
+- ✅ Automatically starts verification when tasks complete
+- ❌ No interference when user interrupts with ESC (user in control)  
+- 💡 Verification results appear directly in the conversation
+```
+
+文件: ./README_CN.md
+```
+# CC-Supervisor (Claude Code Supervisor) 🤖
+
+> AI 驱动的双 Claude 验证系统 - 自动提升代码质量
+
+## ✨ 什么是 CC-Supervisor？
+
+**简单说：我们是 Claude Code 的"质量监督员"**
+
+想象一下：
+- 👷 你使用 Claude Code 编程（和平时一样）
+- 🎬 当 Claude 完成任务时，CC-Supervisor 自动启动
+- 🔍 另一个 Claude（验证员）检查代码质量
+- 💬 验证结果直接显示在对话中
+
+**重要：我们是透明的代理，Claude Code 的所有功能完全正常！**
+
+## 🌟 核心特性
+
+**双 Claude 协作架构**
+- 🤖 **Worker Claude**：你正常使用的 Claude Code
+- 🔍 **Verifier Claude**：后台验证代码质量的 Claude
+- 🎯 **完全透明**：不影响 Claude Code 任何原有功能
+- ⚡ **智能验证**：使用 claude -p 模式快速验证
+
+## 🎯 设计理念
+
+**"验证完成，而非监督过程"**
+- ✅ 任务完成时，自动启动验证
+- ❌ 用户按 ESC 中断时，不干扰（用户在控制）
+- 💡 验证结果直接显示在对话中
+```
+
+
+请执行以下验证：
+1. 检查代码语法是否正确
+2. 评估功能是否实现完整
+3. 识别潜在的问题或改进点
+4. 检查是否有明显的bug或安全问题
+5. 评估代码质量和可维护性
+
+请用以下格式回复：
+【结果】通过/失败
+【说明】详细描述验证发现（可以多行）
+【问题】如有问题，列出具体问题点
+【建议】如有改进空间，给出具体建议
+【亮点】如有值得肯定的地方，也可以提及
+
+请提供详细的验证反馈，帮助开发者了解代码质量。
+
+命令: claude -p
