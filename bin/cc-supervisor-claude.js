@@ -23,8 +23,8 @@ const colors = {
   gray: '\x1b[90m',
 };
 
-// 获取或生成 session ID
-function getSessionId() {
+// 获取 session ID（仅用于命令行参数）
+function getSessionIdFromArgs() {
   // 1. 优先使用命令行参数指定的 session ID
   const args = process.argv.slice(2);
   const sessionIndex = args.indexOf('--session');
@@ -34,9 +34,27 @@ function getSessionId() {
     return specifiedSession;
   }
   
-  // 2. 尝试获取活跃的 Claude session ID
+  // 2. 尝试从 active-session 文件读取
   const projectPath = process.cwd();
   const projectName = projectPath.replace(/\//g, '-').replace(/^-/, '');
+  
+  // 先尝试从 .cc-supervisor 目录读取 active-session
+  const supervisorProjectDir = path.join(require('os').homedir(), '.cc-supervisor', 'projects', projectName);
+  const activeSessionFile = path.join(supervisorProjectDir, 'active-session');
+  
+  if (fs.existsSync(activeSessionFile)) {
+    try {
+      const activeSession = fs.readFileSync(activeSessionFile, 'utf-8').trim();
+      if (activeSession) {
+        console.log(`${colors.green}📋 使用活跃 session: ${activeSession.substring(0, 8)}...${colors.reset}`);
+        return activeSession;
+      }
+    } catch (err) {
+      // 忽略读取错误，继续尝试其他方法
+    }
+  }
+  
+  // 3. 尝试获取活跃的 Claude session ID（后备方案）
   const claudeProjectDir = path.join(require('os').homedir(), '.claude', 'projects', projectName);
   
   if (fs.existsSync(claudeProjectDir)) {
@@ -81,7 +99,7 @@ function getSessionId() {
     }
   }
   
-  // 3. 生成新的 UUID 格式的 session ID
+  // 4. 生成新的 UUID 格式的 session ID
   const crypto = require('crypto');
   const uuid = crypto.randomUUID();
   console.log(`${colors.yellow}⚠️  未找到 Claude session，生成新 ID: ${uuid}${colors.reset}`);
@@ -89,7 +107,7 @@ function getSessionId() {
   return uuid;
 }
 
-const sessionId = getSessionId();
+// 不在初始化时读取 session，等待 SessionStart hook
 const projectPath = process.cwd();
 const projectName = projectPath.replace(/\//g, '-').replace(/^-/, '');
 
@@ -99,18 +117,19 @@ if (!fs.existsSync(supervisorDir)) {
   fs.mkdirSync(supervisorDir, { recursive: true });
 }
 
-// 配置 - 每个 session 独立的文件（与 Claude 结构对应）
+// 基础配置，session相关的路径会动态更新
 const CONFIG = {
-  issuesFile: path.join(supervisorDir, `${sessionId}.issues`),
-  supervisorLog: path.join(supervisorDir, `${sessionId}.log`),
-  fixHistoryFile: path.join(supervisorDir, `${sessionId}.history.json`),
   idleCheckInterval: 500,
   maxWaitForIdle: 30000,
   duplicateFixTimeout: 300000, // 5分钟
-  sessionId: sessionId,  // 保存 session ID
   projectPath: projectPath,  // 保存项目路径
   projectName: projectName,  // 项目名称
-  sessionDir: supervisorDir  // session 目录
+  sessionDir: supervisorDir,  // session 目录
+  // 动态属性，会在运行时更新
+  currentSessionId: null,  // 当前活跃的 session ID
+  issuesFile: null,  // 动态路径
+  supervisorLog: null,  // 动态路径
+  fixHistoryFile: null  // 动态路径
 };
 
 class ClaudeProxy extends EventEmitter {
@@ -121,11 +140,109 @@ class ClaudeProxy extends EventEmitter {
     this.lastOutput = '';
     this.outputBuffer = '';
     this.inputQueue = [];
-    this.fixHistory = this.loadFixHistory();
+    this.fixHistory = {};
     this.supervisorActive = false;
     this.lastActivityTime = Date.now();
-    this.realSessionId = null;  // 真实的 Claude session ID
-    this.watcher = null;        // 文件监听器
+    this.currentSessionId = null;  // 当前活跃的 session ID
+    this.activeSessionFile = path.join(CONFIG.sessionDir, 'active-session');
+    this.sessionCheckInterval = null;  // 定时检查 session 的 timer
+    this.issuesCheckInterval = null;  // 定时检查 issues 文件
+    this.lastIssuesSize = 0;  // 上次 issues 文件大小
+  }
+  
+  /**
+   * 动态更新 session ID 和相关路径
+   */
+  updateSessionId(newSessionId) {
+    if (newSessionId && newSessionId !== this.currentSessionId) {
+      const oldSession = this.currentSessionId;
+      this.currentSessionId = newSessionId;
+      CONFIG.currentSessionId = newSessionId;
+      CONFIG.issuesFile = path.join(CONFIG.sessionDir, `${newSessionId}.issues`);
+      CONFIG.supervisorLog = path.join(CONFIG.sessionDir, `${newSessionId}.log`);
+      CONFIG.fixHistoryFile = path.join(CONFIG.sessionDir, `${newSessionId}.history.json`);
+      
+      // 重新加载修复历史
+      this.fixHistory = this.loadFixHistory();
+      
+      console.error(`[SESSION] 🔄 切换 session: ${oldSession ? oldSession.substring(0,8) : 'null'} -> ${newSessionId.substring(0, 8)}`);
+      console.error(`[SESSION] 📝 监控文件: ${CONFIG.issuesFile}`);
+      this.log(`🔄 切换到新 session: ${newSessionId.substring(0, 8)}...`);
+      
+      
+      // 重置 issues 文件状态
+      this.lastIssuesSize = 0;
+      
+      // 立即检查新 session 的 issues 文件
+      this.checkIssuesFile();
+    }
+  }
+  
+  /**
+   * 检查 issues 文件
+   */
+  checkIssuesFile() {
+    if (!CONFIG.issuesFile || !this.currentSessionId) {
+      return;
+    }
+    
+    try {
+      if (fs.existsSync(CONFIG.issuesFile)) {
+        const stats = fs.statSync(CONFIG.issuesFile);
+        const currentSize = stats.size;
+        
+        // 有新内容
+        if (currentSize > this.lastIssuesSize && currentSize > 0) {
+          console.error(`[ISSUES] 🔴 发现问题文件: ${CONFIG.issuesFile} (${currentSize} bytes)`);
+          
+          const issues = fs.readFileSync(CONFIG.issuesFile, 'utf-8');
+          console.error(`[ISSUES] 📄 内容: ${issues.substring(0, 100)}...`);
+          
+          // 删除文件
+          fs.unlinkSync(CONFIG.issuesFile);
+          this.lastIssuesSize = 0;
+          
+          // 处理问题
+          this.handleIssues(issues).catch(err => {
+            console.error(`[ISSUES] 处理失败: ${err.message}`);
+          });
+        } else {
+          this.lastIssuesSize = currentSize;
+        }
+      }
+    } catch (err) {
+      console.error(`[ISSUES] 检查失败: ${err.message}`);
+    }
+  }
+  
+  /**
+   * 处理发现的问题
+   */
+  async handleIssues(issues) {
+    console.error(`[ISSUES] 🎯 开始处理问题...`);
+    
+    // 生成修复命令
+    const fixCommand = `请分析并修复以下问题：\n${issues}`;
+    
+    // 注入命令
+    await this.injectCommand(fixCommand);
+  }
+  
+  /**
+   * 检查并更新活跃 session
+   */
+  checkActiveSession() {
+    try {
+      if (fs.existsSync(this.activeSessionFile)) {
+        const activeSession = fs.readFileSync(this.activeSessionFile, 'utf-8').trim();
+        if (activeSession && activeSession !== this.currentSessionId) {
+          console.error(`[SESSION] 🆕 发现新 session: ${activeSession.substring(0,8)}...`);
+          this.updateSessionId(activeSession);
+        }
+      }
+    } catch (err) {
+      // 忽略错误
+    }
   }
   
   /**
@@ -174,8 +291,7 @@ class ClaudeProxy extends EventEmitter {
   start() {
     console.log(`${colors.green}🚀 启动 Claude 透明代理...${colors.reset}`);
     console.log(`${colors.yellow}📁 项目: ${CONFIG.projectPath}${colors.reset}`);
-    console.log(`${colors.yellow}🔑 Session: ${CONFIG.sessionId}${colors.reset}`);
-    console.log(`${colors.yellow}📝 问题文件: ${CONFIG.issuesFile}${colors.reset}`);
+    console.log(`${colors.yellow}🔄 Session: 等待 SessionStart hook 提供${colors.reset}`);
     
     // 获取要传递给 Claude 的参数（过滤掉 cc-supervisor-claude 特有的参数）
     const claudeArgs = this.getClaudeArgs();
@@ -184,11 +300,24 @@ class ClaudeProxy extends EventEmitter {
     }
     console.log();
     
+    // 启动定时检查 active-session
+    this.sessionCheckInterval = setInterval(() => {
+      this.checkActiveSession();
+    }, 1000);  // 每秒检查一次
+    
+    // 启动定时检查 issues 文件
+    this.issuesCheckInterval = setInterval(() => {
+      this.checkIssuesFile();
+    }, 500);  // 每500ms检查一次
+    
+    // 立即检查一次
+    this.checkActiveSession();
+    
     // 获取当前终端尺寸
     const cols = process.stdout.columns || 80;
     const rows = process.stdout.rows || 24;
     
-    // 创建 PTY 进程，传递 session 信息和参数给子进程
+    // 创建 PTY 进程
     this.ptyProcess = pty.spawn('claude', claudeArgs, {
       name: 'xterm-256color',
       cols,
@@ -196,9 +325,7 @@ class ClaudeProxy extends EventEmitter {
       cwd: process.cwd(),
       env: { 
         ...process.env, 
-        CLAUDE_PROXY: 'true',
-        SUPERVISOR_SESSION_ID: CONFIG.sessionId,
-        SUPERVISOR_ISSUES_FILE: CONFIG.issuesFile  // 传递问题文件路径
+        CLAUDE_PROXY: 'true'
       }
     });
     
@@ -230,6 +357,11 @@ class ClaudeProxy extends EventEmitter {
     this.ptyProcess.on('data', (data) => {
       // 直接输出到终端，保持所有格式
       process.stdout.write(data);
+      
+      // 调试：记录 Claude 的响应
+      if (this.supervisorActive) {
+        console.error(`[CLAUDE] 收到响应: ${data.toString().substring(0, 50)}...`);
+      }
       
       // 记录输出用于状态检测
       this.outputBuffer += data;
@@ -575,14 +707,16 @@ class ClaudeProxy extends EventEmitter {
     await this.sleep(200);
     
     // 发送回车键执行命令（重要！）
-    // 尝试多种方式确保回车被正确发送
-    // 某些终端/应用可能需要特定的序列
-    this.ptyProcess.write('\r');  // Carriage Return (ASCII 13)
-    await this.sleep(50);
-    this.ptyProcess.write('\n');  // Line Feed (ASCII 10)
+    // 必须同时发送 \r\n 才能正确提交
+    console.error(`[INJECT] ✅ 发送回车键提交命令`);
+    this.ptyProcess.write('\r\n');
     
     // 显示回车符号让用户知道已经提交
     process.stdout.write('\n');
+    
+    // 等待一下让 Claude 处理
+    await this.sleep(500);
+    console.error(`[INJECT] ✔️  命令已提交，等待 Claude 响应...`);
     
     // 备选方案：如果上面不行，可以试试:
     // this.ptyProcess.write(String.fromCharCode(13)); // Enter key
@@ -646,9 +780,11 @@ class ClaudeProxy extends EventEmitter {
         }
       }
       
-      fs.writeFileSync(CONFIG.fixHistoryFile, JSON.stringify(this.fixHistory, null, 2));
+      if (CONFIG.fixHistoryFile) {
+        fs.writeFileSync(CONFIG.fixHistoryFile, JSON.stringify(this.fixHistory, null, 2));
+      }
     } catch (err) {
-      this.log(`保存修复历史失败: ${err.message}`);
+      // 忽略错误
     }
   }
   
@@ -659,8 +795,10 @@ class ClaudeProxy extends EventEmitter {
     const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
     const logMessage = `[${timestamp}] ${message}\n`;
     
-    // 写入日志文件
-    fs.appendFileSync(CONFIG.supervisorLog, logMessage);
+    // 写入日志文件（如果已经有 session）
+    if (CONFIG.supervisorLog) {
+      fs.appendFileSync(CONFIG.supervisorLog, logMessage);
+    }
     
     // 调试模式下输出到 stderr
     if (process.env.DEBUG) {

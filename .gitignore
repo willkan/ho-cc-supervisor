@@ -7,3 +7,21 @@ node_modules/
 archive/
 session.log
 CHALLENGE.md
+
+# Logs and temporary files
+logs/
+*.issues
+*.history.json
+test-*.js
+test-*.sh
+test-file.txt
+test-stopinput.js
+test-template.js
+
+# Verification prompts (user-specific)
+.claude/verification-prompt.txt
+
+# Test outputs
+test.log
+/tmp/test-*
+/tmp/cc-supervisor-test*

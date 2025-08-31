@@ -26,7 +26,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^3.0.2",
     "chokidar": "^4.0.3",
     "commander": "^11.1.0",
     "node-pty": "^1.0.0"

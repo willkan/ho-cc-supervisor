@@ -12,11 +12,12 @@ fi
 # 优先使用 Claude 官方的 session_id，其次使用 cc-supervisor 的环境变量
 session_to_use="${claude_session_id:-$SUPERVISOR_SESSION_ID}"
 
-# 执行验证，传递 session ID（如果存在）
+# 执行验证，传递 session ID 和完整的 stop input
 if [ -n "$session_to_use" ]; then
-    result=$(cc-supervisor verify --json --session "$session_to_use")
+    # 将完整的输入通过环境变量传递给验证程序
+    result=$(STOP_HOOK_INPUT="$input" cc-supervisor verify --json --session "$session_to_use")
 else
-    result=$(cc-supervisor verify --json)
+    result=$(STOP_HOOK_INPUT="$input" cc-supervisor verify --json)
 fi
 
 # 解析结果，如果有问题则写入文件触发自动修复

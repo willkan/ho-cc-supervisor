@@ -116,22 +116,37 @@ Regular Claude Code workflow:
 │  You → Claude Code → Done    │
 └──────────────────────────────┘
 
-With CC-Supervisor installed:
+CC-Supervisor Manual Mode (using claude + hooks):
 ┌──────────────────────────────────────────────────────────┐
-│  You → Claude Code → Done → [Auto-trigger] → Verifier   │
-│         ↑                                          ↓      │
-│         └───── Feedback shows in conversation ────┘      │
+│  You → Claude Code → Done → [Hook Trigger] → Verifier   │
+│                                                    ↓      │
+│                                        (Feedback Shows)   │
 └──────────────────────────────────────────────────────────┘
+
+CC-Supervisor Auto Mode (using cc-supervisor-claude proxy):
+┌────────────────────────────────────────────────────────────────┐
+│  You → [Transparent Proxy] → Claude Code → Done → [Hook] → Verifier │
+│                  ↑                                            ↓      │
+│                  └────────── Auto-injects Feedback ──────────┘      │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### 👶 Explained Like You're Five
 
+**Manual Mode (using claude):**
 1. **You say**: "Build me a login feature"
 2. **Claude Code**: Writes code, says "Done!"
-3. **CC-Supervisor**: "Wait, let me call an inspector"
+3. **Hook**: "Task complete, starting verification"
 4. **Verifier Claude**: "Code looks good, but passwords aren't encrypted"
-5. **Claude Code**: "The verifier says passwords need encryption"
-6. **You**: "OK, add that"
+5. **You see feedback**: Decide whether to ask for fix
+
+**Auto Mode (using cc-supervisor-claude):**
+1. **You say**: "Build me a login feature"
+2. **Transparent Proxy**: Forwards to Claude Code
+3. **Claude Code**: Writes code, says "Done!"
+4. **Verifier Claude**: "Code looks good, but passwords aren't encrypted"
+5. **Proxy auto-injects**: "[Auto] Fix: Add password encryption"
+6. **Claude Code**: Immediately starts fixing, no intervention needed
 
 ## 🔑 Technical Architecture Explained
 
