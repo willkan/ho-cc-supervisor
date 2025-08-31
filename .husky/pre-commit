@@ -1,0 +1,16 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# CC-Supervisor Pre-commit Verification
+echo "🔍 Running CC-Supervisor verification chain tests..."
+
+# 运行验证链路测试
+node test/verification-chain.test.js
+
+if [ $? -ne 0 ]; then
+  echo "❌ Verification chain tests failed!"
+  echo "Please fix the issues before committing."
+  exit 1
+fi
+
+echo "✅ All verification tests passed!"

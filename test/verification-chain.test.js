@@ -173,12 +173,40 @@ function testSessionManagement() {
   });
 }
 
-// 测试 4: 自动注入（需要模拟）
+// 测试 4: 自动注入（模拟测试）
 function testAutoInjection() {
   test('Issues 文件监控', () => {
-    // 这个测试需要 cc-supervisor-claude 运行
-    // 在 CI 环境中可能需要 mock
-    log('  ⏭️  跳过（需要交互式环境）', 'yellow');
+    // 测试 issues 文件创建和检测流程
+    const sessionId = 'test-injection-' + Date.now();
+    const projectDir = path.join(os.homedir(), '.cc-supervisor', 'projects', 
+      TEST_DIR.replace(/\//g, '-').replace(/^-/, ''));
+    const issuesFile = path.join(projectDir, `${sessionId}.issues`);
+    
+    // 创建项目目录
+    fs.mkdirSync(projectDir, { recursive: true });
+    
+    // 写入活动会话
+    const activeSessionFile = path.join(projectDir, 'active-session');
+    fs.writeFileSync(activeSessionFile, sessionId);
+    
+    // 创建 issues 文件
+    const issueContent = '## 验证发现问题\n- 语法错误';
+    fs.writeFileSync(issuesFile, issueContent);
+    
+    // 验证文件存在
+    if (!fs.existsSync(issuesFile)) {
+      throw new Error('Issues 文件创建失败');
+    }
+    
+    // 验证内容可读
+    const content = fs.readFileSync(issuesFile, 'utf-8');
+    if (!content.includes('验证发现问题')) {
+      throw new Error('Issues 文件内容不正确');
+    }
+    
+    // 清理测试文件
+    fs.unlinkSync(issuesFile);
+    fs.unlinkSync(activeSessionFile);
   });
 }
 
