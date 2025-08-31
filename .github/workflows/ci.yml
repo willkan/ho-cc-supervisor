@@ -24,6 +24,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         node-version: ['16', '18', '20']
+        exclude:
+          # Skip macOS + Node 16 due to node-pty compilation issues with Python 3.13
+          - os: macos-latest
+            node-version: '16'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
