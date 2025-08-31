@@ -5,7 +5,7 @@
 
 # 获取项目根目录
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-LOG_DIR="$PROJECT_ROOT/logs/supervisor-me/checks"
+LOG_DIR="$PROJECT_ROOT/logs/cc-supervisor/checks"
 
 # 创建日志目录
 mkdir -p "$LOG_DIR"
@@ -54,13 +54,13 @@ fi
 
 # 只对文件写入操作进行检查
 if [[ "$TOOL_NAME" == "Write" || "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "MultiEdit" ]]; then
-    # 优先使用项目本地的quick-check.js，否则使用全局安装的supervisor-me包中的
-    QUICK_CHECK_JS="$PROJECT_ROOT/lib/supervisor-me/quick-check.js"
+    # 优先使用项目本地的quick-check.js，否则使用全局安装的ho-cc-supervisor包中的
+    QUICK_CHECK_JS="$PROJECT_ROOT/lib/quick-check.js"
     if [ ! -f "$QUICK_CHECK_JS" ]; then
-        # 尝试使用全局安装的supervisor-me包中的quick-check.js
-        SUPERVISOR_ME_PATH=$(npm root -g)/supervisor-me/lib/supervisor-me/quick-check.js
-        if [ -f "$SUPERVISOR_ME_PATH" ]; then
-            QUICK_CHECK_JS="$SUPERVISOR_ME_PATH"
+        # 尝试使用全局安装的ho-cc-supervisor包中的quick-check.js
+        CC_SUPERVISOR_PATH=$(npm root -g)/ho-cc-supervisor/lib/quick-check.js
+        if [ -f "$CC_SUPERVISOR_PATH" ]; then
+            QUICK_CHECK_JS="$CC_SUPERVISOR_PATH"
         fi
     fi
     

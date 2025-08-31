@@ -15,7 +15,7 @@ update_active_session() {
     PROJECT_NAME=$(echo "$PROJECT_PATH" | sed 's/\//\-/g' | sed 's/^-//')
     
     # 创建 session 跟踪目录
-    TRACK_DIR="$HOME/.supervisor-me/projects/$PROJECT_NAME"
+    TRACK_DIR="$HOME/.cc-supervisor/projects/$PROJECT_NAME"
     mkdir -p "$TRACK_DIR"
     
     # 更新活跃 session 文件（简单的单行文件）

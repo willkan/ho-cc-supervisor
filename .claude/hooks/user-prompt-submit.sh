@@ -5,7 +5,7 @@
 
 # 获取项目根目录
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-LOG_DIR="$PROJECT_ROOT/logs/supervisor-me/intents"
+LOG_DIR="$PROJECT_ROOT/logs/cc-supervisor/intents"
 
 # 创建日志目录
 mkdir -p "$LOG_DIR"
@@ -25,7 +25,7 @@ SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
 
 # 检查是否有待处理的验证反馈需要注入
 PROJECT_NAME=$(echo "$PROJECT_ROOT" | tr '/' '-' | sed 's/^-//')
-ISSUES_FILE="$HOME/.supervisor-me/projects/$PROJECT_NAME/$SESSION_ID.issues"
+ISSUES_FILE="$HOME/.cc-supervisor/projects/$PROJECT_NAME/$SESSION_ID.issues"
 if [ -f "$ISSUES_FILE" ]; then
     # 读取反馈内容并注入到对话中
     FEEDBACK_CONTENT=$(cat "$ISSUES_FILE")
@@ -44,8 +44,8 @@ EOF
 fi
 
 # 如果有 intent-logger.js，运行它进行深度分析
-if [ -f "$PROJECT_ROOT/lib/supervisor-me/intent-logger.js" ]; then
-    echo "$USER_PROMPT" | node "$PROJECT_ROOT/lib/supervisor-me/intent-logger.js" \
+if [ -f "$PROJECT_ROOT/lib/intent-logger.js" ]; then
+    echo "$USER_PROMPT" | node "$PROJECT_ROOT/lib/intent-logger.js" \
       --session-id="$SESSION_ID" \
       --project-root="$PROJECT_ROOT"
 fi

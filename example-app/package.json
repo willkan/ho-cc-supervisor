@@ -1,7 +1,7 @@
 {
   "name": "example-app",
   "version": "1.0.0",
-  "description": "Example app for supervisor-me testing",
+  "description": "Example app for cc-supervisor testing",
   "main": "src/index.js",
   "scripts": {
     "test": "jest"

@@ -80,7 +80,7 @@ program
       const detailedLogFile = path.join(logsDir, `verification-${Date.now()}.log`);
       fs.writeFileSync(detailedLogFile, fullMessage);
       
-      // 写入 issues 文件供 supervisor-node 检测
+      // 写入 issues 文件供 cc-supervisor 检测
       // 更智能的检测：包含"问题"或有实质性"建议"时都写入
       const hasActionableContent = result.response && (
         result.response.includes('问题:') && !result.response.includes('问题: -') || // 有实际问题

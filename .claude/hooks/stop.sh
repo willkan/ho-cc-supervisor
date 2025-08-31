@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stop Hook - 调用 supervisor-me CLI 进行验证
+# Stop Hook - 调用 cc-supervisor CLI 进行验证
 # 使用 --json 格式输出，让 Claude Code 可以注入反馈到对话中
 
 # 读取 Claude Code 传递的 JSON 输入
@@ -9,14 +9,14 @@ if [ ! -t 0 ]; then
     claude_session_id=$(echo "$input" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('session_id', ''))" 2>/dev/null)
 fi
 
-# 优先使用 Claude 官方的 session_id，其次使用 supervisor-node 的环境变量
+# 优先使用 Claude 官方的 session_id，其次使用 cc-supervisor 的环境变量
 session_to_use="${claude_session_id:-$SUPERVISOR_SESSION_ID}"
 
 # 执行验证，传递 session ID（如果存在）
 if [ -n "$session_to_use" ]; then
-    result=$(supervisor-me verify --json --session "$session_to_use")
+    result=$(cc-supervisor verify --json --session "$session_to_use")
 else
-    result=$(supervisor-me verify --json)
+    result=$(cc-supervisor verify --json)
 fi
 
 # 解析结果，如果有问题则写入文件触发自动修复
@@ -27,13 +27,13 @@ if echo "$result" | grep -q "验证发现问题\|测试失败\|错误\|TypeError
     # 根据环境变量决定写入位置
     if [ -n "$message" ]; then
         if [ -n "$SUPERVISOR_ISSUES_FILE" ]; then
-            # 使用 supervisor-node 提供的 session 特定文件
+            # 使用 cc-supervisor 提供的 session 特定文件
             echo "$message" > "$SUPERVISOR_ISSUES_FILE"
             echo "[$(date)] 问题已提交给 Supervisor 自动修复 (Session: $session_to_use)" >> "$(dirname "$SUPERVISOR_ISSUES_FILE")/supervisor.log"
         elif [ -n "$session_to_use" ]; then
             # 使用 Claude 官方 session ID 构建路径
             project_name=$(pwd | sed 's/\//\-/g' | sed 's/^-//')
-            issues_dir="$HOME/.supervisor-me/projects/$project_name"
+            issues_dir="$HOME/.cc-supervisor/projects/$project_name"
             mkdir -p "$issues_dir"
             issues_file="$issues_dir/${session_to_use}.issues"
             echo "$message" > "$issues_file"

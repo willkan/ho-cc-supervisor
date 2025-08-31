@@ -5,7 +5,7 @@
 
 # 获取项目根目录
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-LOG_DIR="$PROJECT_ROOT/logs/supervisor-me/completions"
+LOG_DIR="$PROJECT_ROOT/logs/cc-supervisor/completions"
 
 # 创建日志目录
 mkdir -p "$LOG_DIR"
@@ -20,18 +20,18 @@ if [ "$CLAUDE_VERIFIER_MODE" = "true" ]; then
 fi
 
 # 使用智能 Claude 验证（claude -p 模式）
-if [ -f "$PROJECT_ROOT/lib/supervisor-me/claude-verify-simple.js" ]; then
+if [ -f "$PROJECT_ROOT/lib/claude-verify-simple.js" ]; then
     echo "🤖 启动 Claude 智能验证 (claude -p 模式)..." >> "$LOG_DIR/stop.log"
     
     # 运行验证并显示结果
-    node "$PROJECT_ROOT/lib/supervisor-me/claude-verify-simple.js" \
+    node "$PROJECT_ROOT/lib/claude-verify-simple.js" \
       --session-id="${CLAUDE_SESSION_ID:-unknown}" \
       --transcript="${CLAUDE_TRANSCRIPT_PATH:-}" \
       --project-root="$PROJECT_ROOT"
 else
     # 降级到模式匹配验证
-    if [ -f "$PROJECT_ROOT/lib/supervisor-me/verify-completion.js" ]; then
-        node "$PROJECT_ROOT/lib/supervisor-me/verify-completion.js" \
+    if [ -f "$PROJECT_ROOT/lib/verify-completion.js" ]; then
+        node "$PROJECT_ROOT/lib/verify-completion.js" \
           --session-id="${CLAUDE_SESSION_ID:-unknown}" \
           --transcript="${CLAUDE_TRANSCRIPT_PATH:-}" \
           --project-root="$PROJECT_ROOT"
