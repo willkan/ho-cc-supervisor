@@ -5,7 +5,7 @@
 
 # 获取项目根目录
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-LOG_DIR="$PROJECT_ROOT/logs/intents"
+LOG_DIR="$PROJECT_ROOT/logs/supervisor-me/intents"
 
 # 创建日志目录
 mkdir -p "$LOG_DIR"
@@ -23,9 +23,29 @@ SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
     echo ""
 } >> "$LOG_DIR/intents.log"
 
+# 检查是否有待处理的验证反馈需要注入
+PROJECT_NAME=$(echo "$PROJECT_ROOT" | tr '/' '-' | sed 's/^-//')
+ISSUES_FILE="$HOME/.supervisor-me/projects/$PROJECT_NAME/$SESSION_ID.issues"
+if [ -f "$ISSUES_FILE" ]; then
+    # 读取反馈内容并注入到对话中
+    FEEDBACK_CONTENT=$(cat "$ISSUES_FILE")
+    
+    # 直接输出反馈内容让它成为用户消息的一部分
+    cat << EOF
+
+📋 系统反馈（自动提交）：
+
+$FEEDBACK_CONTENT
+
+EOF
+    
+    # 删除已处理的反馈文件
+    rm "$ISSUES_FILE"
+fi
+
 # 如果有 intent-logger.js，运行它进行深度分析
-if [ -f "$PROJECT_ROOT/lib/intent-logger.js" ]; then
-    echo "$USER_PROMPT" | node "$PROJECT_ROOT/lib/intent-logger.js" \
+if [ -f "$PROJECT_ROOT/lib/supervisor-me/intent-logger.js" ]; then
+    echo "$USER_PROMPT" | node "$PROJECT_ROOT/lib/supervisor-me/intent-logger.js" \
       --session-id="$SESSION_ID" \
       --project-root="$PROJECT_ROOT"
 fi
