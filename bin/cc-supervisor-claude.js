@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Node.js 透明代理实现 - 全自动验证修复系统
- * 使用 node-pty 实现完全透明的终端代理
+ * CC-Supervisor Claude Proxy - Automatic verification and fix system
+ * Transparent terminal proxy using node-pty
  */
 
 const pty = require('node-pty');
@@ -94,7 +94,7 @@ const projectPath = process.cwd();
 const projectName = projectPath.replace(/\//g, '-').replace(/^-/, '');
 
 // 创建 supervisor 专用目录（结构与 Claude 一致）
-const supervisorDir = path.join(require('os').homedir(), '.supervisor-me', 'projects', projectName);
+const supervisorDir = path.join(require('os').homedir(), '.cc-supervisor', 'projects', projectName);
 if (!fs.existsSync(supervisorDir)) {
   fs.mkdirSync(supervisorDir, { recursive: true });
 }
@@ -135,7 +135,7 @@ class ClaudeProxy extends EventEmitter {
     const args = process.argv.slice(2);
     const filteredArgs = [];
     
-    // supervisor-node 特有的参数（需要过滤）
+    // cc-supervisor-claude 特有的参数（需要过滤）
     const supervisorArgs = ['--session', '--debug', '--help', '-h'];
     
     let skipNext = false;
@@ -177,7 +177,7 @@ class ClaudeProxy extends EventEmitter {
     console.log(`${colors.yellow}🔑 Session: ${CONFIG.sessionId}${colors.reset}`);
     console.log(`${colors.yellow}📝 问题文件: ${CONFIG.issuesFile}${colors.reset}`);
     
-    // 获取要传递给 Claude 的参数（过滤掉 supervisor-node 特有的参数）
+    // 获取要传递给 Claude 的参数（过滤掉 cc-supervisor-claude 特有的参数）
     const claudeArgs = this.getClaudeArgs();
     if (claudeArgs.length > 0) {
       console.log(`${colors.yellow}⚙️  Claude 参数: ${claudeArgs.join(' ')}${colors.reset}`);
@@ -402,7 +402,7 @@ class ClaudeProxy extends EventEmitter {
       this.watcher = null;
     }
     
-    this.log(`Supervisor 监控已启动 (Session: ${CONFIG.sessionId})`);
+    this.log(`CC-Supervisor monitoring started (Session: ${CONFIG.sessionId})`);
     
     // 使用 fs.watch 监控文件变化（更高效）
     const watchDir = path.dirname(CONFIG.issuesFile);
@@ -779,10 +779,10 @@ const args = process.argv.slice(2);
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
 使用方法:
-  supervisor-node                    # 启动透明代理（自动检测 session）
-  supervisor-node --session <uuid>   # 指定 Claude session ID
-  supervisor-node --help             # 显示帮助
-  supervisor-node --debug            # 调试模式
+  cc-supervisor-claude                    # 启动透明代理（自动检测 session）
+  cc-supervisor-claude --session <uuid>   # 指定 Claude session ID
+  cc-supervisor-claude --help             # 显示帮助
+  cc-supervisor-claude --debug            # 调试模式
 
 环境变量:
   DEBUG=1                            # 显示调试日志
@@ -797,9 +797,9 @@ if (args.includes('--help') || args.includes('-h')) {
   - 与 Claude session 一一对应
   
 文件位置:
-  ~/.supervisor-me/projects/<project-name>/<session-id>.issues    # 问题文件
-  ~/.supervisor-me/projects/<project-name>/<session-id>.log       # 日志文件
-  ~/.supervisor-me/projects/<project-name>/<session-id>.history   # 历史记录
+  ~/.cc-supervisor/projects/<project-name>/<session-id>.issues    # 问题文件
+  ~/.cc-supervisor/projects/<project-name>/<session-id>.log       # 日志文件
+  ~/.cc-supervisor/projects/<project-name>/<session-id>.history   # 历史记录
   `);
   process.exit(0);
 }

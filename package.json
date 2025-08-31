@@ -1,17 +1,16 @@
 {
-  "name": "supervisor-me",
+  "name": "@ho/cc-supervisor",
   "version": "2.0.0",
-  "description": "双 Claude 智能验证系统 - 让 Claude Code 编程更可靠",
+  "description": "Claude Code Supervisor - AI-powered code quality verification system",
   "main": "lib/claude-verify-simple.js",
   "bin": {
-    "supervisor-me": "./bin/supervisor-me",
-    "supervisor-node": "./bin/supervisor-node.js",
-    "supervisor-tmux": "./bin/supervisor-tmux"
+    "cc-supervisor": "./bin/cc-supervisor",
+    "cc-supervisor-claude": "./bin/cc-supervisor-claude.js"
   },
   "scripts": {
-    "test": "node bin/supervisor-me test",
-    "status": "node bin/supervisor-me status",
-    "show-report": "node bin/supervisor-me show-report"
+    "test": "node bin/cc-supervisor test",
+    "status": "node bin/cc-supervisor status",
+    "show-report": "node bin/cc-supervisor show-report"
   },
   "keywords": [
     "supervisor",
@@ -44,6 +43,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/supervisor-me.git"
+    "url": "https://github.com/yourusername/cc-supervisor.git"
   }
 }

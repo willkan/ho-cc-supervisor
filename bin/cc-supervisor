@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Supervisor-ME CLI
- * 双 Claude 智能验证系统的命令行工具
+ * CC-Supervisor CLI
+ * Claude Code Supervisor - AI-powered code quality verification
  */
 
 const { program } = require('commander');
@@ -16,8 +16,8 @@ const PACKAGE_ROOT = path.join(__dirname, '..');
 
 // 设置版本和描述
 program
-  .name('supervisor-me')
-  .description('双 Claude 智能验证系统 - 让编程更可靠')
+  .name('cc-supervisor')
+  .description('Claude Code Supervisor - AI-powered code quality verification')
   .version(packageJson.version);
 
 // verify 命令 - 执行验证（供 hook 调用）
@@ -26,7 +26,7 @@ program
   .description('执行验证（由 Stop hook 调用）')
   .option('--json', '输出JSON格式用于hook集成')
   .option('--silent', '静默模式，只输出结果')
-  .option('--session <id>', 'Session ID（由 supervisor-node 传递）')
+  .option('--session <id>', 'Session ID (passed by cc-supervisor-claude)')
   .action(async (options) => {
     const verifierPath = path.join(PACKAGE_ROOT, 'lib', 'claude-verify-simple.js');
     
@@ -53,7 +53,7 @@ program
     }
     
     // 确保日志目录存在
-    const logsDir = path.join(process.cwd(), 'logs/supervisor-me/completions');
+    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor/completions');
     fs.mkdirSync(logsDir, { recursive: true });
     
     // 记录日志
@@ -96,7 +96,7 @@ program
         // 获取项目路径和 session ID
         const projectPath = process.cwd();
         const projectName = projectPath.replace(/\//g, '-').replace(/^-/, '');
-        const supervisorDir = path.join(require('os').homedir(), '.supervisor-me', 'projects', projectName);
+        const supervisorDir = path.join(require('os').homedir(), '.cc-supervisor', 'projects', projectName);
         
         // 优先使用命令行参数中的 session ID，其次使用环境变量
         const sessionId = options.session || process.env.SUPERVISOR_SESSION_ID;
@@ -156,13 +156,13 @@ program
 // init 命令 - 初始化项目
 program
   .command('init')
-  .description('在当前项目中初始化 Supervisor-ME')
+  .description('在当前项目中初始化 CC-Supervisor')
   .option('-f, --force', '强制覆盖已存在的配置')
   .action((options) => {
     const targetDir = process.cwd();
     const sourceDir = path.join(__dirname, '..');
     
-    console.log('🚀 初始化 Supervisor-ME...');
+    console.log('🚀 初始化 CC-Supervisor...');
     
     // 检查是否已存在配置
     const claudeDir = path.join(targetDir, '.claude');
@@ -260,11 +260,11 @@ program
         }
       });
       
-      // 3. 不再复制 lib 文件，使用全局安装的 supervisor-me
+      // 3. 不再复制 lib 文件，使用全局安装的 cc-supervisor
       
       // 4. 创建 logs 目录
       console.log('📁 创建日志目录...');
-      execSync(`mkdir -p "${targetDir}/logs/supervisor-me/completions" "${targetDir}/logs/supervisor-me/checks" "${targetDir}/logs/supervisor-me/intents"`, { stdio: 'pipe' });
+      execSync(`mkdir -p "${targetDir}/logs/cc-supervisor/completions" "${targetDir}/logs/cc-supervisor/checks" "${targetDir}/logs/cc-supervisor/intents"`, { stdio: 'pipe' });
       
       // 5. 设置执行权限
       console.log('🔧 设置脚本权限...');
@@ -273,7 +273,7 @@ program
       // 6. 更新 hook 脚本使用 CLI 命令
       updateHookScripts(hooksDir);
       
-      console.log('✅ Supervisor-ME 初始化成功！');
+      console.log('✅ CC-Supervisor 初始化成功！');
       console.log('');
       
       if (hasExistingConfig && !options.force) {
@@ -286,8 +286,8 @@ program
       console.log('下一步：');
       console.log('1. 启动新的 Claude Code 会话: claude');
       console.log('2. 正常工作，验证会自动运行');
-      console.log('3. 查看验证报告: npx supervisor-me show-report');
-      console.log('4. 查看系统状态: npx supervisor-me status');
+      console.log('3. 查看验证报告: npx cc-supervisor show-report');
+      console.log('4. 查看系统状态: npx cc-supervisor status');
       
     } catch (error) {
       console.error('❌ 初始化失败:', error.message);
@@ -318,10 +318,10 @@ program
   .option('--detailed', '显示详细的验证日志')
   .option('--latest', '显示最新的完整验证结果')
   .action((options) => {
-    const logsDir = path.join(process.cwd(), 'logs/supervisor-me');
+    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor');
     
     if (!fs.existsSync(logsDir)) {
-      console.error('❌ 未找到日志目录！请先运行 supervisor-me init');
+      console.error('❌ 未找到日志目录！请先运行 cc-supervisor init');
       process.exit(1);
     }
     
@@ -441,12 +441,12 @@ program
 // status 命令 - 查看系统状态
 program
   .command('status')
-  .description('查看 Supervisor-ME 状态')
+  .description('查看 CC-Supervisor 状态')
   .action(() => {
     const claudeDir = path.join(process.cwd(), '.claude');
-    const logsDir = path.join(process.cwd(), 'logs/supervisor-me');
+    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor');
     
-    console.log('🔍 Supervisor-ME 系统状态\n');
+    console.log('🔍 CC-Supervisor 系统状态\n');
     console.log('─'.repeat(60));
     
     // 检查安装状态
@@ -472,7 +472,7 @@ program
       }
       
       // 检查验证器（现在是全局安装的）
-      console.log(`🤖 验证器: ✅ supervisor-me verify (全局命令)`);
+      console.log(`🤖 验证器: ✅ cc-supervisor verify (全局命令)`);
       
       // 统计日志
       if (fs.existsSync(logsDir)) {
@@ -499,7 +499,7 @@ program
     console.log('─'.repeat(60));
     
     if (!isInstalled) {
-      console.log('\n💡 运行 supervisor-me init 来初始化');
+      console.log('\n💡 运行 cc-supervisor init 来初始化');
     } else {
       console.log('\n✨ 系统就绪！启动 Claude Code 即可使用');
     }
@@ -512,7 +512,7 @@ program
   .option('-n, --lines <number>', '显示最近的N条记录', '5')
   .option('--latest', '显示最新的完整提示')
   .action((options) => {
-    const promptsDir = path.join(process.cwd(), 'logs/supervisor-me/prompts');
+    const promptsDir = path.join(process.cwd(), 'logs/cc-supervisor/prompts');
     
     if (!fs.existsSync(promptsDir)) {
       console.log('📋 暂无验证提示历史');
@@ -565,7 +565,7 @@ program
       
       console.log('\n' + '═'.repeat(60));
       console.log(`\n💡 使用 --latest 查看最新的完整提示`);
-      console.log(`💡 直接查看文件: cat logs/supervisor-me/prompts/prompt-*.txt`);
+      console.log(`💡 直接查看文件: cat logs/cc-supervisor/prompts/prompt-*.txt`);
     }
   });
 
@@ -575,7 +575,7 @@ program
   .description('清理验证日志')
   .option('--all', '清理所有日志')
   .action((options) => {
-    const logsDir = path.join(process.cwd(), 'logs/supervisor-me');
+    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor');
     
     if (!fs.existsSync(logsDir)) {
       console.log('📋 没有日志需要清理');
@@ -601,7 +601,7 @@ program
   .command('test')
   .description('测试验证功能')
   .action(() => {
-    console.log('🧪 测试 Supervisor-ME 验证功能...\n');
+    console.log('🧪 测试 CC-Supervisor 验证功能...\n');
     
     const testFile = path.join(process.cwd(), 'test-verify.js');
     
@@ -611,7 +611,7 @@ function add(a, b) {
   return a + b;
 }
 
-console.log('Test file created by supervisor-me');
+console.log('Test file created by cc-supervisor');
 `);
     
     console.log('✅ 创建测试文件: test-verify.js');
@@ -630,7 +630,7 @@ console.log('Test file created by supervisor-me');
         // 验证脚本可能返回非0，这是正常的
       }
     } else {
-      console.log('❌ 未找到验证脚本！请先运行 supervisor-me init');
+      console.log('❌ 未找到验证脚本！请先运行 cc-supervisor init');
     }
     
     // 清理测试文件
