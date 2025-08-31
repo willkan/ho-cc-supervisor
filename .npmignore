@@ -1,0 +1,44 @@
+# Development files
+.github/
+.claude/hooks/*.backup*
+.claude/settings.json.backup*
+archive/
+logs/
+test/
+test-*.sh
+test-*.js
+
+# Documentation source files
+*.md
+!README.md
+!README_CN.md
+!USAGE_GUIDE.md
+!CLAUDE.md
+
+# Git and IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Development dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist/
+build/
+*.tgz
+
+# Config files
+.eslintrc*
+.prettierrc*
+.editorconfig
+tsconfig.json
+webpack.config.js
