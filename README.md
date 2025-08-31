@@ -2,20 +2,32 @@
 
 > AI-powered dual-Claude verification system for automatic code quality improvement
 
+## ✨ What is CC-Supervisor?
+
+**Simply put: We're Claude Code's "Quality Inspector"**
+
+Imagine this:
+- 👷 You use Claude Code for programming (as usual)
+- 🎬 When Claude completes a task, CC-Supervisor automatically activates
+- 🔍 Another Claude (the verifier) checks your code quality
+- 💬 Verification feedback appears directly in your conversation
+
+**Important: We're a transparent proxy - ALL Claude Code features work normally!**
+
 ## 🌟 Key Features
 
 **Dual Claude Collaboration Architecture**
-- 🤖 **Worker Claude**: Executes your programming tasks
-- 🔍 **Verifier Claude**: Intelligently verifies task quality
-- 🎯 **Natural Language Understanding**: True task comprehension without rigid patterns
-- ⚡ **claude -p mode**: Fast verification without interaction
+- 🤖 **Worker Claude**: Your regular Claude Code instance
+- 🔍 **Verifier Claude**: Background Claude that verifies code quality
+- 🎯 **Fully Transparent**: Doesn't affect any Claude Code features
+- ⚡ **Smart Verification**: Uses claude -p mode for fast verification
 
 ## 🎯 Design Philosophy
 
 **"Verify Completion, Not Supervise Process"**
-- ✅ Automatically launches second Claude for verification when tasks complete
+- ✅ Automatically starts verification when tasks complete
 - ❌ No interference when user interrupts with ESC (user in control)  
-- 💡 Verification results return to Worker Claude for communication
+- 💡 Verification results appear directly in the conversation
 
 ## 🚀 Quick Start
 
@@ -96,29 +108,57 @@ cc-supervisor/
     └── intents/                  # User intent records
 ```
 
-## 🎨 How It Works
+## 🎨 How It Works (Explained Simply)
 
-```mermaid
-graph LR
-    A[Your Task] --> B[Worker Claude]
-    B --> C{Task Complete?}
-    C -->|Yes| D[Stop Hook Triggered]
-    D --> E[Launch Verifier Claude]
-    E --> F[claude -p Verification]
-    F --> G[Return Results]
-    G --> B
-    B --> H[Display Verification Feedback]
-    C -->|ESC Interrupt| I[No Verification]
+```
+Regular Claude Code workflow:
+┌──────────────────────────────┐
+│  You → Claude Code → Done    │
+└──────────────────────────────┘
+
+With CC-Supervisor installed:
+┌──────────────────────────────────────────────────────────┐
+│  You → Claude Code → Done → [Auto-trigger] → Verifier   │
+│         ↑                                          ↓      │
+│         └───── Feedback shows in conversation ────┘      │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### Detailed Flow
+### 👶 Explained Like You're Five
 
-1. **You submit task** → Worker Claude executes
-2. **Task completes** → Stop Hook triggers automatically
-3. **Check environment** → Avoid verification loops
-4. **Launch Verifier Claude** → Using `claude -p` mode
-5. **Intelligent analysis** → Check syntax, logic, completion
-6. **Return feedback** → Displays "📋 Verifier Claude feedback: ..."
+1. **You say**: "Build me a login feature"
+2. **Claude Code**: Writes code, says "Done!"
+3. **CC-Supervisor**: "Wait, let me call an inspector"
+4. **Verifier Claude**: "Code looks good, but passwords aren't encrypted"
+5. **Claude Code**: "The verifier says passwords need encryption"
+6. **You**: "OK, add that"
+
+## 🔑 Technical Architecture Explained
+
+### How CC-Supervisor Actually Works
+
+1. **Hook System** (Claude Code's hooks)
+   - Claude Code supports running scripts on specific events
+   - We attached a hook to the "task complete" event
+   - When triggered, it starts the verification process
+
+2. **Transparent Proxy**
+   - CC-Supervisor doesn't modify any Claude Code behavior
+   - Just adds a verification step after task completion
+   - All Claude Code features remain 100% functional
+
+3. **Dual Claude Mechanism**
+   - Worker Claude: Your normal Claude Code instance
+   - Verifier Claude: Launched via `claude -p` command
+   - Both run independently without interference
+
+### Custom Verification Templates
+
+Starting from v2.1.0, you can customize verification prompts:
+
+1. Create `.claude/verification-prompt.txt`
+2. Write your verification requirements, supports `{{userPrompt}}` variable
+3. The verifier will automatically use your template
 
 ## 📊 CLI Commands
 
