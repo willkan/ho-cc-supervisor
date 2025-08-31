@@ -11,7 +11,7 @@ LOG_DIR="$PROJECT_ROOT/logs/cc-supervisor/intents"
 mkdir -p "$LOG_DIR"
 
 # 获取用户输入
-USER_PROMPT="${CLAUDE_USER_PROMPT:-}"
+USER_PROMPT="${1:-${CLAUDE_USER_PROMPT:-}}"  # 优先从命令行参数，其次环境变量
 SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
 
 # 记录用户意图
@@ -22,6 +22,14 @@ SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
     echo "Prompt: $USER_PROMPT"
     echo ""
 } >> "$LOG_DIR/intents.log"
+
+# 保存最新的用户需求供Stop hook使用
+if [ -n "$USER_PROMPT" ]; then
+    PROJECT_NAME=$(echo "$PROJECT_ROOT" | tr '/' '-' | sed 's/^-//')
+    PROMPT_DIR="$HOME/.cc-supervisor/projects/$PROJECT_NAME"
+    mkdir -p "$PROMPT_DIR"
+    echo "$USER_PROMPT" > "$PROMPT_DIR/${SESSION_ID}.prompt"
+fi
 
 # 检查是否有待处理的验证反馈需要注入
 PROJECT_NAME=$(echo "$PROJECT_ROOT" | tr '/' '-' | sed 's/^-//')
