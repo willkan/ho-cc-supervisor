@@ -201,18 +201,13 @@ program
           console.log('   ✅ 添加 Stop hook');
         }
         
-        // 合并 PostToolUse hooks
+        // 合并 PostToolUse hooks (新格式：数组)
         if (!existingConfig.hooks.PostToolUse) {
-          existingConfig.hooks.PostToolUse = {};
+          existingConfig.hooks.PostToolUse = supervisorConfig.hooks.PostToolUse;
+          console.log('   ✅ 添加 PostToolUse hooks');
+        } else {
+          console.log('   ⏭️  跳过已存在的 PostToolUse hooks');
         }
-        Object.keys(supervisorConfig.hooks.PostToolUse || {}).forEach(tool => {
-          if (!existingConfig.hooks.PostToolUse[tool]) {
-            existingConfig.hooks.PostToolUse[tool] = supervisorConfig.hooks.PostToolUse[tool];
-            console.log(`   ✅ 添加 PostToolUse.${tool} hook`);
-          } else {
-            console.log(`   ⏭️  跳过已存在的 PostToolUse.${tool} hook`);
-          }
-        });
         
         // 合并 UserPromptSubmit hook
         if (!existingConfig.hooks.UserPromptSubmit) {

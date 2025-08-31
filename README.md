@@ -23,7 +23,7 @@
 
 ```bash
 # Global installation
-npm install -g @ho/cc-supervisor
+npm install -g ho-cc-supervisor
 
 # Initialize in your project
 cd your-project
@@ -127,10 +127,12 @@ graph LR
 cc-supervisor init
 
 # View verification reports (like playwright show-report)
-cc-supervisor show-report          # Last 10 entries
-cc-supervisor show-report -n 20    # Last 20 entries
-cc-supervisor show-report --follow # Real-time tracking
-cc-supervisor show-report --json   # JSON format
+cc-supervisor show-report              # Last 10 entries
+cc-supervisor show-report -n 20        # Last 20 entries
+cc-supervisor show-report --follow     # Real-time tracking
+cc-supervisor show-report --json       # JSON format
+cc-supervisor show-report --detailed   # Show detailed verification logs
+cc-supervisor show-report --latest     # Show latest complete verification result
 
 # Check system status
 cc-supervisor status
@@ -202,13 +204,37 @@ Worker Claude: [Stops]
 ```json
 {
   "hooks": {
-    "Stop": ".claude/hooks/stop.sh",
-    "PostToolUse": {
-      "Write": ".claude/hooks/post-tool-use.sh",
-      "Edit": ".claude/hooks/post-tool-use.sh",
-      "MultiEdit": ".claude/hooks/post-tool-use.sh"
-    },
-    "UserPromptSubmit": ".claude/hooks/user-prompt-submit.sh"
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/stop.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use.sh $FILE_PATH"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/user-prompt-submit.sh \"$USER_PROMPT\""
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -282,7 +308,7 @@ Contributions welcome! Please read our contributing guidelines first.
 - [Documentation](./docs/)
 - [中文文档](./README_CN.md)
 - [Issues](https://github.com/yourusername/cc-supervisor/issues)
-- [NPM Package](https://www.npmjs.com/package/@ho/cc-supervisor)
+- [NPM Package](https://www.npmjs.com/package/ho-cc-supervisor)
 
 ---
 

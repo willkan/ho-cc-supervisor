@@ -1,38 +1,38 @@
-# Supervisor-ME 使用指南
+# CC-Supervisor 使用指南
 
 ## 🚀 快速开始
 
-### 方式一：在新项目中使用（推荐）
+### 方式一：NPM 安装（推荐）
 
 ```bash
-# 1. 克隆 Supervisor-ME
-git clone https://github.com/yourusername/supervisor-me-mvp.git ~/supervisor-me
+# 1. 全局安装
+npm install -g ho-cc-supervisor
 
 # 2. 进入你的项目
 cd your-project
 
-# 3. 复制必要文件
-cp -r ~/supervisor-me/.claude .
-cp -r ~/supervisor-me/lib .
+# 3. 初始化
+cc-supervisor init
 
-# 4. 设置执行权限
-chmod +x .claude/hooks/*.sh
-
-# 5. 启动 Claude Code
+# 4. 启动 Claude Code
 claude
 ```
 
-### 方式二：在 Supervisor-ME 项目中测试
+### 方式二：本地开发安装
 
 ```bash
 # 1. 克隆并进入项目
-git clone https://github.com/yourusername/supervisor-me-mvp.git
-cd supervisor-me-mvp
+git clone https://github.com/willkan/ho-cc-supervisor.git
+cd ho-cc-supervisor
 
-# 2. 确保脚本有执行权限
-chmod +x .claude/hooks/*.sh
+# 2. 链接到全局
+npm link
 
-# 3. 启动 Claude Code
+# 3. 在你的项目中初始化
+cd your-project
+cc-supervisor init
+
+# 4. 启动 Claude Code
 claude
 ```
 

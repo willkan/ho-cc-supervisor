@@ -1,11 +1,11 @@
 {
-  "name": "@ho/cc-supervisor",
-  "version": "2.0.0",
+  "name": "ho-cc-supervisor",
+  "version": "2.0.1",
   "description": "Claude Code Supervisor - AI-powered code quality verification system",
   "main": "lib/claude-verify-simple.js",
   "bin": {
-    "cc-supervisor": "./bin/cc-supervisor",
-    "cc-supervisor-claude": "./bin/cc-supervisor-claude.js"
+    "cc-supervisor": "bin/cc-supervisor",
+    "cc-supervisor-claude": "bin/cc-supervisor-claude.js"
   },
   "scripts": {
     "test": "node bin/cc-supervisor test",
