@@ -115,9 +115,96 @@ When contributing to CC-Supervisor:
 3. Update documentation for new features
 4. Ensure backward compatibility with Claude Code hooks
 
+## Current Status (2025-01-31)
+
+### ✅ Completed Features
+1. **Dynamic Session Tracking**: cc-supervisor-claude 动态跟踪活跃 session，支持 session 切换
+2. **Auto-Injection Working**: 自动注入和提交功能已验证在真实环境中工作
+3. **Complete Test Suite**: 
+   - `test/verification-chain.test.js` - 6个测试全部通过
+   - `test/run-all-tests.sh` - 9个测试综合套件
+   - Pre-commit hooks 质量保证
+4. **Template System**: 模板引擎和配置文件支持
+
+### 🚧 Planned Architecture Refactor: File Polling → RPC Communication
+
+**Current Problem**: File-based communication with polling
+- Hook writes to `.issues` files → cc-supervisor-claude polls files
+- Performance overhead from file I/O and timers
+- Debugging difficulty due to async file operations
+
+**Target Solution**: Real-time RPC communication
+- Hook calls RPC method → cc-supervisor-claude receives immediately  
+- Event-driven architecture with bidirectional logging
+- Clear debugging and better performance
+
+### 📋 RPC Architecture Refactor Plan
+
+#### Phase 1: RPC Server Integration
+- **Task**: Modify `bin/cc-supervisor-claude.js` to start RPC Server
+- **File**: `lib/rpc-server.js` (already created)
+- **Method**: 
+  - Start Unix socket server on startup
+  - Replace file polling with RPC event handlers
+  - Keep PTY management unchanged
+
+#### Phase 2: Hook Client Conversion  
+- **Task**: Convert `Stop Hook` from file writer to RPC client
+- **File**: `.claude/hooks/stop.sh`
+- **Method**:
+  - Add RPC client function (via nc/curl/node)
+  - Call `reportIssue(sessionId, verificationResult)` instead of writing files
+  - Maintain hook return format for Claude Code compatibility
+
+#### Phase 3: Clean Up Legacy
+- **Task**: Remove file polling mechanisms
+- **Files**: Remove timer code, file watchers from cc-supervisor-claude
+- **Test**: Ensure all existing test cases still pass
+
+#### Phase 4: Enhanced Features
+- **Bidirectional Communication**: Allow supervisor to query hook status
+- **Performance Monitoring**: Add metrics for RPC call latency
+- **Fallback Mechanism**: File-based fallback if RPC unavailable
+
+### 🎯 Implementation Details
+
+**RPC Protocol Design**:
+```
+Method: reportIssue
+Params: {
+  sessionId: string,
+  issueData: string (markdown format),
+  timestamp: ISO string
+}
+Response: {
+  success: boolean,
+  message: string
+}
+```
+
+**Socket Path**: `/tmp/cc-supervisor-rpc.sock` (Unix socket)
+
+**Error Handling**:
+- RPC timeout: Fall back to file-based approach
+- Connection failed: Log warning, continue with current session
+- Protocol error: Retry once, then fallback
+
+### 🧪 Testing Strategy
+1. **Unit Tests**: RPC server and client components
+2. **Integration Tests**: Full Hook → RPC → Injection flow
+3. **Backward Compatibility**: Ensure file-based hooks still work during transition
+4. **Performance Tests**: Compare RPC vs file polling latency
+
+### 📊 Success Metrics
+- **Latency**: RPC response < 100ms (vs ~1000ms file polling)
+- **Reliability**: 99%+ RPC call success rate
+- **Debugging**: Clear bidirectional logs for troubleshooting
+- **Compatibility**: All existing functionality preserved
+
 ## Notes for Claude Assistants
 When assisting with CC-Supervisor development:
 - Always verify auto-feedback actually submits (not just displays)
 - Test real scenarios with actual Claude sessions
 - Check terminal output for `[自动注入]` markers
 - Validate hook integration doesn't interfere with normal Claude operation
+- **RPC Refactor**: Test both RPC and legacy file-based modes during transition
