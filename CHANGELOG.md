@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.3] - 2025-09-01
+
+### Fixed
+- 🔧 **Auto-Approval Logic**: Fixed auto-approval not working for legitimate plan approvals
+- 📝 **Clearer Instructions**: Made it explicit that auto-approval should use block to push forward
+- 🎯 **Correct Behavior**: Supervisor now correctly returns block for storyline/workflow approvals
+
+### Enhanced
+- 📋 **More Keywords**: Added "storyline", "workflow", "APPROVAL GATE" to auto-approval detection
+- 💡 **Better Guidance**: Added explicit "must return" and "do not return" examples in rules
+
 ## [3.2.2] - 2025-09-01
 
 ### Enhanced
