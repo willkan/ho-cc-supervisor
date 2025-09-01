@@ -149,9 +149,28 @@ fi
 
 log_debug "监工原始返回: $supervisor_result_raw"
 
-# 过滤掉代理响应和markdown代码块标记
-supervisor_result=$(echo "$supervisor_result_raw" | grep -v "^proxy success$" | grep -v "^proxy" | sed '/^```json$/d' | sed '/^```$/d')
-log_debug "过滤后的监工结果: $supervisor_result"
+# 改进的过滤逻辑：处理proxy success和JSON（可能多行）的情况
+if echo "$supervisor_result_raw" | grep -q "proxy success"; then
+    # 检测到proxy success，需要提取JSON部分
+    # 从第一个{开始，到最后一个}结束，包括多行JSON
+    supervisor_result=$(echo "$supervisor_result_raw" | awk '
+        /{/ { capture=1 }
+        capture { result = result $0 }
+        /}/ && capture { print result; exit }
+    ')
+    
+    # 如果还是空，尝试更宽松的提取
+    if [ -z "$supervisor_result" ]; then
+        # 去掉proxy success行，然后提取剩余内容
+        supervisor_result=$(echo "$supervisor_result_raw" | sed '/proxy success/d' | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    fi
+    
+    log_debug "检测到proxy success，提取JSON结果: $supervisor_result"
+else
+    # 没有proxy success，正常过滤markdown标记
+    supervisor_result=$(echo "$supervisor_result_raw" | sed '/^```json$/d' | sed '/^```$/d')
+    log_debug "过滤后的监工结果: $supervisor_result"
+fi
 
 # 如果过滤后为空，说明只有代理响应没有真实内容
 if [[ -z "$supervisor_result" ]]; then

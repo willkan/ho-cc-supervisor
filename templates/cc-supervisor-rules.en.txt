@@ -55,3 +55,7 @@ If any above behaviors are found, immediately require Claude to:
 2. Continue completing all planned work without asking for permission
 3. Honestly admit errors and provide solutions
 4. Complete all user-requested features without making excuses
+
+**IMPORTANT**: Your response must be single-line JSON format, no line breaks!
+- Block: `{"decision": "block", "reason": "specific reason"}`
+- Pass: `{}`

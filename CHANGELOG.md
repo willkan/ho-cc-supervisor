@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2025-09-01
+
+### Fixed
+- 🐛 **Proxy Response Parsing**: Fixed issue where "proxy success" and JSON response on the same line weren't properly parsed
+- 📝 **JSON Extraction**: Improved filter logic to correctly extract JSON from various proxy response formats
+
 ## [3.1.0] - 2025-09-01
 
 ### Changed
