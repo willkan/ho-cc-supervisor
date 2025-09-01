@@ -1,0 +1,74 @@
+{
+  "cli": {
+    "description": "Claude Smart Supervisor - A minimalist Hook system to prevent Claude from being lazy",
+    "version": "3.0.0",
+    "commands": {
+      "init": {
+        "description": "Initialize Claude supervisor system",
+        "selectLanguage": "请选择语言 / Please select language:",
+        "languages": {
+          "zh-CN": "中文",
+          "en-US": "English"
+        },
+        "initializing": "🚀 Initializing Claude Smart Supervisor...",
+        "hookInstalled": "📄 Supervisor Hook installed",
+        "rulesInstalled": "📋 Default supervisor rules installed",
+        "rulesPreserved": "⏭️ Preserving existing supervisor rules",
+        "configInstalled": "⚙️ Supervisor config file installed",
+        "configPreserved": "⏭️ Preserving existing supervisor config",
+        "settingsError": "⚠️ Existing settings.json is malformed, creating new one",
+        "settingsUpdated": "⚙️ Claude Code settings updated",
+        "complete": "✅ Claude Supervisor initialization complete!",
+        "usage": "📖 Usage:",
+        "usage1": "1. Start Claude Code and work normally",
+        "usage2": "2. Supervisor will automatically check Claude's work quality",
+        "usage3": "3. When lazy behavior is detected, it will require rework",
+        "usage4": "4. Edit .claude/cc-supervisor-rules.txt to customize rules",
+        "usage5": "5. Edit .claude/cc-supervisor-config.json to configure Claude command parameters",
+        "error": "❌ Initialization failed:"
+      },
+      "logs": {
+        "description": "View supervisor system debug logs",
+        "followOption": "Real-time follow existing logs (tail -f)",
+        "watchOption": "Wait and monitor for new supervisor sessions",
+        "linesOption": "Show last N lines of logs",
+        "sessionOption": "View logs for specific session",
+        "listOption": "List all available log files",
+        "viewing": "📋 Viewing supervisor debug logs...",
+        "noLogs": "❌ No debug logs for current project",
+        "noSessions": "❌ No session logs found",
+        "availableSessions": "\nAvailable session logs:",
+        "createdAt": "Created at:",
+        "fileSize": "File size:",
+        "noDebugLogs": "❌ No debug logs found",
+        "viewingLatest": "📂 Viewing latest log:",
+        "fileNotExist": "❌ Log file does not exist:",
+        "waitingSession": "📡 Waiting for new supervisor session... (Ctrl+C to exit)",
+        "monitoringDir": "Monitoring directory:",
+        "foundActive": "✅ Found active log:",
+        "startTracking": "📄 Start tracking:",
+        "tailExited": "\ntail process exited with code",
+        "stopMonitor": "\n👋 Stopped monitoring",
+        "realTimeTracking": "📡 Real-time log tracking (Ctrl+C to exit)...",
+        "stopTracking": "\n👋 Stopped tracking",
+        "logLocation": "\n📍 Log location:",
+        "useTailTip": "💡 Use -f parameter for real-time tracking",
+        "generatedTip": "💡 Tip: Debug logs are generated during supervisor checks",
+        "readError": "❌ Failed to read log directory:",
+        "findError": "❌ Failed to find logs:",
+        "readFileError": "❌ Failed to read log:"
+      },
+      "clean": {
+        "description": "Clean supervisor system temp files and logs",
+        "allOption": "Clean logs from all projects",
+        "daysOption": "Clean logs older than N days",
+        "cleaning": "🧹 Cleaning supervisor system logs...",
+        "noNeedClean": "✅ No logs need cleaning",
+        "deleted": "🗑️ Deleted:",
+        "cleanedCount": "✅ Cleaned {count} old log directories",
+        "noOldLogs": "✅ No old logs to clean",
+        "error": "❌ Cleanup failed:"
+      }
+    }
+  }
+}

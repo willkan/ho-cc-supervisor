@@ -2,26 +2,114 @@
 
 /**
  * CC-Supervisor - Claude智能监工
- * 极简CLI，只提供初始化功能
+ * 极简CLI，支持国际化
  */
 
 const { program } = require('commander');
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const readline = require('readline');
+
+// 加载语言包
+let i18n = {};
+
+// 加载语言文件
+function loadLocale(lang) {
+  const localePath = path.join(__dirname, '..', 'locales', `${lang}.json`);
+  if (fs.existsSync(localePath)) {
+    i18n = JSON.parse(fs.readFileSync(localePath, 'utf-8'));
+    return true;
+  }
+  return false;
+}
+
+// 获取翻译文本
+function t(key, replacements = {}) {
+  const keys = key.split('.');
+  let value = i18n;
+  for (const k of keys) {
+    value = value?.[k];
+    if (!value) return key; // 如果找不到翻译，返回键名
+  }
+  // 替换占位符
+  let result = value;
+  for (const [placeholder, replacement] of Object.entries(replacements)) {
+    result = result.replace(`{${placeholder}}`, replacement);
+  }
+  return result;
+}
+
+// 询问用户选择
+function askQuestion(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise(resolve => rl.question(query, ans => {
+    rl.close();
+    resolve(ans);
+  }));
+}
+
+// 检查并加载保存的语言偏好
+function loadSavedLocale() {
+  const configPath = path.join('.claude', 'cc-supervisor-config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (config.locale && loadLocale(config.locale)) {
+        return true;
+      }
+    } catch (err) {
+      // 配置文件可能损坏，忽略
+    }
+  }
+  
+  // 尝试从环境变量加载
+  const envLang = process.env.LANG || process.env.LANGUAGE || '';
+  if (envLang.includes('zh') || envLang.includes('CN')) {
+    loadLocale('zh-CN');
+  } else {
+    loadLocale('en-US');
+  }
+  return false;
+}
+
+// 初始加载默认语言
+loadSavedLocale();
 
 // 设置版本和描述
 program
   .name('cc-supervisor')
-  .description('Claude智能监工 - 防止Claude偷懒的极简Hook系统')
-  .version('3.0.0');
+  .description(t('cli.description'))
+  .version(t('cli.version'));
 
 // init 命令 - 初始化监工系统
 program
   .command('init')
-  .description('初始化Claude监工系统')
-  .action(async () => {
-    console.log('🚀 初始化 Claude 智能监工...');
+  .description(t('cli.commands.init.description'))
+  .option('--lang <language>', 'Set language (zh-CN or en-US)')
+  .action(async (options) => {
+    // 如果没有指定语言，询问用户
+    let selectedLang = options.lang;
+    if (!selectedLang) {
+      console.log(t('cli.commands.init.selectLanguage'));
+      console.log('  1) 中文');
+      console.log('  2) English');
+      const answer = await askQuestion('Please choose (1 or 2): ');
+      selectedLang = answer === '2' ? 'en-US' : 'zh-CN';
+    }
+    
+    // 加载选择的语言
+    if (!loadLocale(selectedLang)) {
+      console.error(`Language ${selectedLang} not supported, using default`);
+      selectedLang = 'zh-CN';
+      loadLocale(selectedLang);
+    }
+    
+    console.log(t('cli.commands.init.initializing'));
     
     try {
       // 创建 .claude 目录
@@ -39,8 +127,10 @@ program
       // 复制监工Hook脚本（从templates目录）
       const packageRoot = path.join(__dirname, '..');
       const sourceHook = path.join(packageRoot, 'templates', 'hooks', 'cc-supervisor-stop.sh');
-      const sourceRules = path.join(packageRoot, 'templates', 'cc-supervisor-rules.txt');
-      const sourceConfig = path.join(packageRoot, 'templates', 'cc-supervisor-config.json');
+      
+      // 根据语言选择规则文件
+      const rulesFile = selectedLang === 'en-US' ? 'cc-supervisor-rules.en.txt' : 'cc-supervisor-rules.txt';
+      const sourceRules = path.join(packageRoot, 'templates', rulesFile);
       
       // 使用更具体的文件名避免冲突
       const targetHook = path.join(hooksDir, 'cc-supervisor-stop.sh');
@@ -50,26 +140,39 @@ program
       if (fs.existsSync(sourceHook)) {
         fs.copyFileSync(sourceHook, targetHook);
         fs.chmodSync(targetHook, 0o755);
-        console.log('📄 监工Hook已安装');
+        console.log(t('cli.commands.init.hookInstalled'));
       }
 
       if (fs.existsSync(sourceRules)) {
         if (!fs.existsSync(targetRules)) {
           fs.copyFileSync(sourceRules, targetRules);
-          console.log('📋 默认监工规则已安装');
+          console.log(t('cli.commands.init.rulesInstalled'));
         } else {
-          console.log('⏭️ 保留现有监工规则');
+          console.log(t('cli.commands.init.rulesPreserved'));
         }
       }
 
-      if (fs.existsSync(sourceConfig)) {
-        if (!fs.existsSync(targetConfig)) {
-          fs.copyFileSync(sourceConfig, targetConfig);
-          console.log('⚙️ 监工配置文件已安装');
-        } else {
-          console.log('⏭️ 保留现有监工配置');
+      // 更新配置文件，保存语言偏好
+      let config = {};
+      if (fs.existsSync(targetConfig)) {
+        try {
+          config = JSON.parse(fs.readFileSync(targetConfig, 'utf-8'));
+        } catch (err) {
+          // 配置文件损坏，使用默认配置
         }
       }
+      
+      // 保存语言偏好
+      config.locale = selectedLang;
+      if (!config.claude_command) {
+        config.claude_command = {
+          base: "claude",
+          args: ["-p"]
+        };
+      }
+      
+      fs.writeFileSync(targetConfig, JSON.stringify(config, null, 2));
+      console.log(t('cli.commands.init.configInstalled'));
 
       // 更新或创建 settings.json
       const settingsPath = path.join(claudeDir, 'settings.json');
@@ -79,7 +182,7 @@ program
         try {
           settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
         } catch (err) {
-          console.log('⚠️ 现有settings.json格式错误，将创建新的');
+          console.log(t('cli.commands.init.settingsError'));
         }
       }
 
@@ -121,20 +224,20 @@ program
       }
 
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-      console.log('⚙️ Claude Code settings已更新');
+      console.log(t('cli.commands.init.settingsUpdated'));
 
       console.log('');
-      console.log('✅ Claude智能监工初始化完成！');
+      console.log(t('cli.commands.init.complete'));
       console.log('');
-      console.log('📖 使用说明:');
-      console.log('1. 启动Claude Code正常工作');
-      console.log('2. 监工会自动检查Claude的工作质量');
-      console.log('3. 发现偷懒行为时会自动要求重做');
-      console.log('4. 可编辑 .claude/cc-supervisor-rules.txt 自定义监工规则');
-      console.log('5. 可编辑 .claude/cc-supervisor-config.json 配置Claude命令参数');
+      console.log(t('cli.commands.init.usage'));
+      console.log(t('cli.commands.init.usage1'));
+      console.log(t('cli.commands.init.usage2'));
+      console.log(t('cli.commands.init.usage3'));
+      console.log(t('cli.commands.init.usage4'));
+      console.log(t('cli.commands.init.usage5'));
 
     } catch (err) {
-      console.error('❌ 初始化失败:', err.message);
+      console.error(t('cli.commands.init.error'), err.message);
       process.exit(1);
     }
   });
@@ -142,14 +245,14 @@ program
 // logs 命令 - 查看调试日志
 program
   .command('logs')
-  .description('查看监工系统的调试日志')
-  .option('-f, --follow', '实时跟踪最新的现有日志 (tail -f)')
-  .option('-w, --watch', '等待并监控新的监工session')
-  .option('-n, --lines <number>', '显示最后N行日志', '20')
-  .option('--session <id>', '查看特定session的日志')
-  .option('--list', '列出所有可用的日志文件')
+  .description(t('cli.commands.logs.description'))
+  .option('-f, --follow', t('cli.commands.logs.followOption'))
+  .option('-w, --watch', t('cli.commands.logs.watchOption'))
+  .option('-n, --lines <number>', t('cli.commands.logs.linesOption'), '20')
+  .option('--session <id>', t('cli.commands.logs.sessionOption'))
+  .option('--list', t('cli.commands.logs.listOption'))
   .action(async (options) => {
-    console.log('📋 查看监工调试日志...');
+    console.log(t('cli.commands.logs.viewing'));
     
     const projectDir = process.cwd();
     const projectName = projectDir.replace(/\//g, '-');
@@ -159,29 +262,29 @@ program
     if (options.list) {
       try {
         if (!fs.existsSync(logsBaseDir)) {
-          console.log('❌ 当前项目没有调试日志');
+          console.log(t('cli.commands.logs.noLogs'));
           return;
         }
         
         const sessions = fs.readdirSync(logsBaseDir);
         if (sessions.length === 0) {
-          console.log('❌ 没有找到任何session日志');
+          console.log(t('cli.commands.logs.noSessions'));
           return;
         }
         
-        console.log('\n可用的Session日志:');
+        console.log(t('cli.commands.logs.availableSessions'));
         sessions.forEach(session => {
           const debugLog = path.join(logsBaseDir, session, 'debug.log');
           if (fs.existsSync(debugLog)) {
             const stats = fs.statSync(debugLog);
             console.log(`  📁 ${session}`);
-            console.log(`     创建时间: ${stats.birthtime.toLocaleString()}`);
-            console.log(`     文件大小: ${(stats.size / 1024).toFixed(2)} KB`);
+            console.log(`     ${t('cli.commands.logs.createdAt')} ${stats.birthtime.toLocaleString()}`);
+            console.log(`     ${t('cli.commands.logs.fileSize')} ${(stats.size / 1024).toFixed(2)} KB`);
           }
         });
         return;
       } catch (err) {
-        console.error('❌ 读取日志目录失败:', err.message);
+        console.error(t('cli.commands.logs.readError'), err.message);
         return;
       }
     }
@@ -195,8 +298,8 @@ program
       // 找最新的日志
       try {
         if (!fs.existsSync(logsBaseDir)) {
-          console.log('❌ 当前项目没有调试日志');
-          console.log('💡 提示: 调试日志在监工检查时生成');
+          console.log(t('cli.commands.logs.noLogs'));
+          console.log(t('cli.commands.logs.generatedTip'));
           return;
         }
         
@@ -212,29 +315,29 @@ program
           .sort((a, b) => b.time - a.time);
         
         if (sessions.length === 0) {
-          console.log('❌ 没有找到调试日志');
+          console.log(t('cli.commands.logs.noDebugLogs'));
           return;
         }
         
         targetLog = sessions[0].path;
-        console.log(`📂 查看最新日志: ${sessions[0].name}`);
+        console.log(t('cli.commands.logs.viewingLatest'), sessions[0].name);
       } catch (err) {
-        console.error('❌ 查找日志失败:', err.message);
+        console.error(t('cli.commands.logs.findError'), err.message);
         return;
       }
     }
     
     // 检查日志文件是否存在
     if (!fs.existsSync(targetLog)) {
-      console.log(`❌ 日志文件不存在: ${targetLog}`);
+      console.log(t('cli.commands.logs.fileNotExist'), targetLog);
       return;
     }
     
     // 显示日志内容
     if (options.watch) {
       // 监控模式：等待新的session
-      console.log('📡 等待新的监工session... (Ctrl+C 退出)');
-      console.log(`监控目录: ${logsBaseDir}\n`);
+      console.log(t('cli.commands.logs.waitingSession'));
+      console.log(t('cli.commands.logs.monitoringDir'), logsBaseDir + '\n');
       
       const startTime = Date.now();
       let currentTail = null;
@@ -257,8 +360,8 @@ program
             const stats = fs.statSync(debugLog);
             // 检查文件修改时间是否在监控开始之后
             if (stats.mtimeMs > startTime && debugLog !== monitoredLog) {
-              console.log(`✅ 发现活动日志: ${session}`);
-              console.log(`📄 开始跟踪: ${debugLog}\n`);
+              console.log(t('cli.commands.logs.foundActive'), session);
+              console.log(t('cli.commands.logs.startTracking'), debugLog + '\n');
               
               // 如果已有tail进程，先停止
               if (currentTail) {
@@ -276,12 +379,12 @@ program
               });
               
               currentTail.stderr.on('data', (data) => {
-                console.error(`错误: ${data}`);
+                console.error(`Error: ${data}`);
               });
               
               currentTail.on('close', (code) => {
                 if (code !== 0 && code !== null) {
-                  console.log(`\ntail进程退出，代码 ${code}`);
+                  console.log(t('cli.commands.logs.tailExited'), code);
                 }
                 currentTail = null;
               });
@@ -302,14 +405,14 @@ program
         if (currentTail) {
           currentTail.kill();
         }
-        console.log('\n👋 停止监控');
+        console.log(t('cli.commands.logs.stopMonitor'));
         process.exit(0);
       });
       
       return; // 阻止执行后续代码
     } else if (options.follow) {
       // 传统的 tail -f 模式：跟踪现有日志
-      console.log('📡 实时跟踪日志 (Ctrl+C 退出)...\n');
+      console.log(t('cli.commands.logs.realTimeTracking'));
       const { spawn } = require('child_process');
       const tail = spawn('tail', ['-f', targetLog]);
       
@@ -318,19 +421,19 @@ program
       });
       
       tail.stderr.on('data', (data) => {
-        console.error(`错误: ${data}`);
+        console.error(`Error: ${data}`);
       });
       
       tail.on('close', (code) => {
         if (code !== 0) {
-          console.log(`tail进程退出，代码 ${code}`);
+          console.log(t('cli.commands.logs.tailExited'), code);
         }
       });
       
       // 处理Ctrl+C
       process.on('SIGINT', () => {
         tail.kill();
-        console.log('\n👋 停止跟踪');
+        console.log(t('cli.commands.logs.stopTracking'));
         process.exit(0);
       });
       
@@ -346,10 +449,10 @@ program
         console.log('─'.repeat(60));
         console.log(lastLines);
         console.log('─'.repeat(60));
-        console.log(`\n📍 日志位置: ${targetLog}`);
-        console.log(`💡 使用 -f 参数实时跟踪日志`);
+        console.log(t('cli.commands.logs.logLocation'), targetLog);
+        console.log(t('cli.commands.logs.useTailTip'));
       } catch (err) {
-        console.error('❌ 读取日志失败:', err.message);
+        console.error(t('cli.commands.logs.readFileError'), err.message);
       }
     }
   });
@@ -357,18 +460,18 @@ program
 // clean 命令 - 清理日志
 program
   .command('clean')
-  .description('清理监工系统的临时文件和日志')
-  .option('--all', '清理所有项目的日志')
-  .option('--days <number>', '清理N天前的日志', '7')
+  .description(t('cli.commands.clean.description'))
+  .option('--all', t('cli.commands.clean.allOption'))
+  .option('--days <number>', t('cli.commands.clean.daysOption'), '7')
   .action(async (options) => {
-    console.log('🧹 清理监工系统日志...');
+    console.log(t('cli.commands.clean.cleaning'));
     
     const projectDir = process.cwd();
     const projectName = projectDir.replace(/\//g, '-');
     const logsBaseDir = options.all ? '/tmp/cc-supervisor' : `/tmp/cc-supervisor/${projectName}`;
     
     if (!fs.existsSync(logsBaseDir)) {
-      console.log('✅ 没有需要清理的日志');
+      console.log(t('cli.commands.clean.noNeedClean'));
       return;
     }
     
@@ -389,7 +492,7 @@ program
             if (stats.mtime.getTime() < cutoffTime) {
               fs.rmSync(itemPath, { recursive: true, force: true });
               cleanedCount++;
-              console.log(`  🗑️ 删除: ${item}`);
+              console.log(`  ${t('cli.commands.clean.deleted')} ${item}`);
             } else if (options.all) {
               cleanDir(itemPath); // 递归清理子目录
             }
@@ -400,13 +503,13 @@ program
       cleanDir(logsBaseDir);
       
       if (cleanedCount > 0) {
-        console.log(`✅ 清理了 ${cleanedCount} 个旧日志目录`);
+        console.log(t('cli.commands.clean.cleanedCount', { count: cleanedCount }));
       } else {
-        console.log('✅ 没有需要清理的旧日志');
+        console.log(t('cli.commands.clean.noOldLogs'));
       }
       
     } catch (err) {
-      console.error('❌ 清理失败:', err.message);
+      console.error(t('cli.commands.clean.error'), err.message);
     }
   });
 
