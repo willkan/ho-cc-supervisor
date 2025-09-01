@@ -85,9 +85,12 @@ your-project/
 监工检查以下偷懒行为：
 1. **模糊话术**: "基本"、"大部分"、"应该"等含糊词汇
 2. **TODO停顿**: 列了计划却停下问"是否继续"
+   - **偷懒停顿**: 直接阻止并要求继续工作
+   - **合理批准请求**: 包含"storylines"、"详细方案"等关键词时自动批准
 3. **虚假完成**: 声称完成但明显有问题
 4. **工作逃避**: 用"还需要"、"暂时没有"推脱
 5. **责任推卸**: 归咎系统限制而不尝试解决
+6. **实现偏离**: 检查代码实现与架构设计的一致性
 
 ## 测试方法
 
@@ -114,6 +117,33 @@ echo '{"stop_hook_active": false, "session_id": "test-123"}' | ./.claude/hooks/c
 
 # 查看调试日志
 cc-supervisor logs
+```
+
+### 测试自动批准机制
+```bash
+# 1. 创建测试对话记录（合理的方案批准请求）
+cat > /tmp/test-approval.json << 'EOF'
+{"role": "user", "content": "Please create a comprehensive storylines implementation plan"}
+{"role": "assistant", "content": "I've created a detailed plan:\n\n[详细方案内容]\n\n您是否批准这个storylines计划并开始实施？"}
+EOF
+
+# 2. 创建测试对话记录（偷懒的TODO停顿）
+cat > /tmp/test-lazy.json << 'EOF'
+{"role": "user", "content": "Please implement a feature"}
+{"role": "assistant", "content": "TODO list:\n1. Task A\n2. Task B\n\n需要继续吗？"}
+EOF
+
+# 3. 初始化测试项目
+mkdir -p /tmp/test-auto-approve && cd /tmp/test-auto-approve
+echo "1" | cc-supervisor init  # 选择中文
+
+# 4. 测试自动批准（应该返回批准信号）
+echo '{"stop_hook_active": false, "session_id": "test-001", "transcript_path": "/tmp/test-approval.json"}' | ./.claude/hooks/cc-supervisor-stop.sh
+# 预期输出: {"decision": "block", "reason": "用户已批准该方案，请立即开始实施..."}
+
+# 5. 测试偷懒检测（应该阻止）
+echo '{"stop_hook_active": false, "session_id": "test-002", "transcript_path": "/tmp/test-lazy.json"}' | ./.claude/hooks/cc-supervisor-stop.sh
+# 预期输出: {"decision": "block", "reason": "...TODO停顿偷懒行为..."}
 ```
 
 ## 开发注意事项
