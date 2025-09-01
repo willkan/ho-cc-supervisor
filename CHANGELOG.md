@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2025-09-01
+
+### Fixed
+- 🔧 **Path Resolution**: Fixed project directory resolution to use Hook script location instead of current working directory
+- 📁 **Log Directory Consistency**: Logs are now correctly created based on project root path, not pwd
+- 🐛 **Absolute Path**: Added `realpath` to resolve Hook script to absolute path
+- 📝 **Template Syntax**: Fixed backtick escaping in supervisor prompt
+
+### Changed
+- 🗂️ **Simplified Rule Check**: Removed unnecessary upward search since project root is now correctly identified
+- 📍 **Directory Logic**: PROJECT_DIR is now derived from Hook script location (3 dirname calls from .claude/hooks/cc-supervisor-stop.sh)
+
 ## [3.2.0] - 2025-09-01
 
 ### Added

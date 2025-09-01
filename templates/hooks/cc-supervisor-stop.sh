@@ -10,13 +10,24 @@ input=$(cat)
 stop_hook_active=$(echo "$input" | jq -r '.stop_hook_active // false')
 session_id=$(echo "$input" | jq -r '.session_id // ""')
 
-# 获取项目目录和会话信息
-PROJECT_DIR=$(pwd)
-# 使用与 ~/.claude/projects/ 相同的命名格式（将 / 替换为 -）
-PROJECT_NAME=$(echo "$PROJECT_DIR" | sed 's/\//-/g')
-# 使用Claude Code提供的session_id（必须有）
+# 获取Hook脚本所在的项目目录（这是真正的项目根目录）
+# Hook脚本总是在 .claude/hooks/cc-supervisor-stop.sh
+# 需要解析为绝对路径，因为$0可能是相对路径
+HOOK_SCRIPT_PATH=$(realpath "$0")
+HOOK_DIR=$(dirname "$HOOK_SCRIPT_PATH")        # .claude/hooks
+CLAUDE_DIR=$(dirname "$HOOK_DIR")              # .claude
+PROJECT_DIR=$(dirname "$CLAUDE_DIR")            # 项目根目录
+
+# 获取当前工作目录（仅用于记录）
+CURRENT_DIR=$(pwd)
+
+# 使用Claude Code提供的session_id
 SESSION_ID="${session_id}"
 TEMP_BASE="/tmp/cc-supervisor"
+
+# 基于项目根目录生成项目名称（而不是当前工作目录）
+PROJECT_NAME=$(echo "$PROJECT_DIR" | sed 's/\//-/g')
+# 日志目录基于项目根目录
 TEMP_DIR="${TEMP_BASE}/${PROJECT_NAME}/${SESSION_ID}"
 
 # 创建隔离的临时目录和调试日志
@@ -37,7 +48,8 @@ trap 'log_debug "Hook正常退出或异常终止"' EXIT
 # 记录开始
 log_debug "===== 监工Hook开始 ====="
 log_debug "Hook进程PID: $SCRIPT_PID"
-log_debug "项目目录: $PROJECT_DIR"
+log_debug "项目根目录: $PROJECT_DIR"
+log_debug "当前工作目录: $CURRENT_DIR"
 log_debug "项目名称: $PROJECT_NAME"
 log_debug "会话ID: $SESSION_ID"
 log_debug "stop_hook_active: $stop_hook_active"
@@ -53,35 +65,11 @@ if [ "$stop_hook_active" = "true" ]; then
     # 不退出，继续正常检查
 fi
 
-# 向上查找监工模板（支持在子目录工作）
-find_supervisor_rules() {
-    local current_dir="$1"
-    local max_depth=10  # 最多向上查找10层
-    local depth=0
-    
-    while [ "$depth" -lt "$max_depth" ]; do
-        if [ -f "$current_dir/.claude/cc-supervisor-rules.txt" ]; then
-            echo "$current_dir/.claude/cc-supervisor-rules.txt"
-            return 0
-        fi
-        
-        # 到达根目录或home目录就停止
-        if [ "$current_dir" = "/" ] || [ "$current_dir" = "$HOME" ]; then
-            return 1
-        fi
-        
-        current_dir=$(dirname "$current_dir")
-        depth=$((depth + 1))
-    done
-    
-    return 1
-}
+# 直接检查项目根目录的监工规则
+supervisor_template="$PROJECT_DIR/.claude/cc-supervisor-rules.txt"
 
-# 从当前目录开始向上查找监工规则
-supervisor_template=$(find_supervisor_rules "$PROJECT_DIR")
-
-if [ -z "$supervisor_template" ]; then
-    log_debug "未找到监工规则文件（向上查找了10层目录）"
+if [ ! -f "$supervisor_template" ]; then
+    log_debug "未找到监工规则文件: $supervisor_template"
     # 没有监工模板，允许停止
     exit 0
 fi
@@ -131,7 +119,7 @@ system_prompt="你是一个JSON格式输出器，你的唯一功能是根据工�
 2. 根据监工规则检查Claude的工作质量
 
 监工规则：
-$(cat "$PROJECT_DIR/$supervisor_template" 2>/dev/null || echo "监工规则文件未找到")
+$(cat "$supervisor_template" 2>/dev/null || echo "监工规则文件未找到")
 
 对话上下文：
 $(echo "$input" | jq -r '.')
@@ -140,7 +128,7 @@ $(echo "$input" | jq -r '.')
 - 如果发现不满足监共要求：返回 {\"decision\": \"block\", \"reason\": \"具体问题\"}
 - 如果工作质量合格：返回 {\"reason\": \"具体各项检查结论\"}
 - 你是一个API端点，只返回JSON，不返回其他任何内容
-- 绝对不要使用```json或```这样的markdown代码块标记
+- 绝对不要使用\`\`\`json或\`\`\`这样的markdown代码块标记
 - 直接输出纯JSON字符串，第一个字符必须是{
 
 OUTPUT:"
