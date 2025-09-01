@@ -48,162 +48,129 @@ Claude智能监工 - 防止Claude偷懒的极简Hook系统
                    ▼                             ▼
         ┌──────────────────┐          ┌──────────────────┐
         │   检查工作质量    │          │   检查工作质量    │
-        │   发现偷懒行为    │          │    质量合格      │
         └──────────────────┘          └──────────────────┘
                    │                             │
                    ▼                             ▼
         ┌──────────────────┐          ┌──────────────────┐
-        │ 返回 BLOCK 决定  │          │  返回 PASS 决定  │
-        │ {"decision":     │          │       {}         │
-        │  "block",        │          └──────────────────┘
-        │  "reason":"..."}│                     │
-        └──────────────────┘                     ▼
-                   │                   ┌──────────────────┐
-                   ▼                   │   允许正常停止    │
-        ┌──────────────────┐          └──────────────────┘
-        │   阻止停止请求    │
-        │  要求Claude重做   │
-        └──────────────────┘
-                   │
-                   ▼
-        ┌──────────────────┐
-        │  Claude继续工作   │◄──────────────┐
-        └──────────────────┘              │
-                   │                       │
-                   └───────────────────────┘
-                        （循环直到质量合格）
+        │   发现质量问题    │          │    质量合格     │
+        │    (阻止停止)    │          │   (允许停止)    │
+        └──────────────────┘          └──────────────────┘
+                   │                             │
+                   ▼                             ▼
+        ┌──────────────────┐          ┌──────────────────┐
+        │   返回继续工作    │          │    正常停止     │
+        │  "别偷懒！继续！"  │          │                │
+        └──────────────────┘          └──────────────────┘
 ```
 
-## 📦 快速开始
+## 🎭 效果示例
 
-### 1. 安装
+### 示例1：捕获模糊话术
+```json
+用户："请实现登录功能"
+Claude："基本完成了，应该可以工作"
+
+[监工阻止停止]
+理由："使用了模糊词汇'基本'和'应该'。必须提供具体的实现细节。"
+```
+
+### 示例2：自动批准合理方案
+```json
+用户："创建一个全面的实施计划"
+Claude："我已创建详细的storylines计划：
+         [详细计划内容]
+         您是否批准这个storylines计划并开始实施？"
+
+[监工自动批准]
+理由："用户已批准该方案，请立即开始实施。不要再次询问，直接执行你提出的完整计划。"
+```
+
+### 示例3：阻止TODO停顿
+```json
+用户："请添加用户认证"
+Claude："TODO清单：
+         1. 创建用户模型
+         2. 添加认证路由
+         需要继续吗？"
+
+[监工阻止停止]
+理由："列出了TODO但停下来征求许可。必须继续完成所有计划的工作。"
+```
+
+## 🚀 快速开始
+
+### 安装
 
 ```bash
 # 全局安装
 npm install -g ho-cc-supervisor
-
-# 或使用 yarn
-yarn global add ho-cc-supervisor
 ```
 
-### 2. 初始化监工系统
-
-在你的项目目录中运行：
+### 在项目中初始化
 
 ```bash
+# 进入你的项目
+cd your-project
+
+# 初始化监工（交互式选择语言）
 cc-supervisor init
+
+# 或直接指定语言
+cc-supervisor init --lang zh
+cc-supervisor init --lang en
 ```
 
-输出示例：
-```
-🚀 初始化 Claude 智能监工...
-📄 监工Hook已安装
-📋 默认监工规则已安装
-⚙️ 监工配置文件已安装
-⚙️ Claude Code settings已更新
+### 查看监工日志
 
-✅ Claude智能监工初始化完成！
-
-📖 使用说明:
-1. 启动Claude Code正常工作
-2. 监工会自动检查Claude的工作质量
-3. 发现偷懒行为时会自动要求重做
-4. 可编辑 .claude/cc-supervisor-rules.txt 自定义监工规则
-5. 可编辑 .claude/cc-supervisor-config.json 配置Claude命令参数
-```
-
-### 3. 开始使用
-
-正常使用Claude Code即可，监工会在后台自动工作。
-
-## 🎭 效果示例
-
-### 场景1：Claude试图糊弄过关
-
-```
-Claude: 我已经基本完成了主要功能，虽然还有一些小问题...
-[尝试停止对话]
-
-监工: BLOCK - 检测到模糊话术"基本完成"和"虽然"，请明确完成状态并解决所有问题
-
-Claude: [被迫继续工作，修复所有问题]
-```
-
-### 场景2：Claude列TODO后停顿
-
-```
-Claude: 我规划了以下步骤：
-1. 实现用户认证
-2. 添加数据验证
-3. 编写测试用例
-是否需要我继续？
-[尝试停止]
-
-监工: BLOCK - 检测到TODO停顿行为，请继续完成所有规划的工作
-
-Claude: [继续执行所有步骤]
-```
-
-## 🛠️ 命令详解
-
-### 初始化命令
 ```bash
-cc-supervisor init
-```
-- 创建 `.claude/` 目录结构
-- 安装监工Hook脚本到 `.claude/hooks/cc-supervisor-stop.sh`
-- 配置 `settings.json` 启用Hook（1200秒超时）
-- 生成默认监工规则到 `.claude/cc-supervisor-rules.txt`
-- 生成监工配置文件到 `.claude/cc-supervisor-config.json`
-
-### 日志查看命令
-```bash
-# 查看最新日志（最后20行）
+# 查看最新日志
 cc-supervisor logs
 
-# 实时跟踪现有日志
+# 实时跟踪现有日志文件
 cc-supervisor logs -f
 
-# 等待并监控新的监工session
+# 等待新session并自动跟踪
 cc-supervisor logs -w
 
-# 查看最后50行日志
-cc-supervisor logs -n 50
-
-# 列出所有可用的日志文件
+# 列出所有可用的session
 cc-supervisor logs --list
-
-# 查看特定session的日志
-cc-supervisor logs --session <session-id>
 ```
 
-### 清理命令
+### 清理日志
+
 ```bash
 # 清理7天前的日志（默认）
 cc-supervisor clean
 
-# 清理所有今天的日志
+# 清理今天的所有日志
 cc-supervisor clean --days 0
 
 # 清理所有项目的日志
 cc-supervisor clean --all
 ```
 
-## 📝 自定义监工规则
+## 📋 监工规则
 
-编辑 `.claude/cc-supervisor-rules.txt` 文件来自定义检查规则：
+监工检查以下偷懒行为：
 
-```text
-# 示例规则
-1. 禁止使用"基本"、"大概"、"应该"等模糊词汇
-2. TODO列表必须全部完成，不能中途询问
-3. 测试必须全部通过才能声称完成
-4. 遇到错误必须解决，不能推给用户
-```
+1. **模糊话术**："基本"、"大部分"、"应该"、"可能"
+2. **TODO停顿**：
+   - **偷懒停顿**：列出TODO后询问是否继续会被阻止
+   - **合理批准**：包含"storylines"关键词的完整方案会自动批准
+3. **虚假完成**：声称完成但明显有问题未解决
+4. **工作逃避**：使用"还需要"、"暂时没有"推脱工作
+5. **责任推卸**：归咎系统限制而不尝试解决
+6. **实现偏离**：代码实现与承诺的架构不匹配
 
-## ⚙️ 配置Claude命令
+## 📝 自定义配置
 
-编辑 `.claude/cc-supervisor-config.json` 来配置监工Claude的命令参数：
+### 自定义监工规则
+
+编辑 `.claude/cc-supervisor-rules.txt` 来自定义适合你项目的检查规则。
+
+### 配置Claude命令
+
+创建 `.claude/cc-supervisor-config.json`：
 
 ```json
 {
@@ -214,31 +181,80 @@ cc-supervisor clean --all
 }
 ```
 
-## 🐛 调试技巧
+## 🐛 调试
 
-1. **查看实时日志**
-   ```bash
-   cc-supervisor logs -w  # 等待新session并自动跟踪
-   ```
+### 查看实时日志
+```bash
+cc-supervisor logs -w  # 等待新session并自动跟踪
+```
 
-2. **检查调试目录**
-   ```bash
-   ls -la /tmp/cc-supervisor/
-   ```
+### 检查调试目录
+```bash
+ls -la /tmp/cc-supervisor/
+```
 
-3. **手动测试Hook**
-   ```bash
-   echo '{"stop_hook_active": false, "session_id": "test"}' | ./.claude/hooks/cc-supervisor-stop.sh
-   ```
+### 手动测试Hook
+```bash
+# 测试批准机制
+echo '{"stop_hook_active": false, "session_id": "test"}' | ./.claude/hooks/cc-supervisor-stop.sh
+```
 
 ## ⚙️ 技术架构
 
-- **独立监工系统**: 独立的Claude实例（`claude -p`）作为质量监工
-- **Hook机制**: 利用Claude Code原生Stop Hook
-- **隔离执行**: 监工在独立目录避免循环
-- **JSON通信**: 标准化的决策格式
-- **调试日志**: 完整记录执行过程
+- **独立监工系统**：独立的Claude实例（`claude -p`）作为质量监工
+- **Stop Hook机制**：利用Claude Code原生的Stop Hook，超时20分钟
+- **隔离执行**：监工在`/tmp/cc-supervisor/`运行，避免无限循环
+- **JSON通信**：返回`{"decision": "block", "reason": "..."}`或`{}`表示通过
+- **调试日志**：完整的执行轨迹和PID跟踪
 
-## 📄 License
+## 🌍 国际化支持
+
+支持中英双语：
+- 初始化时交互式选择语言
+- 语言偏好保存在配置中
+- 所有CLI输出、日志、规则都已本地化
+
+## 📁 文件结构
+
+```
+安装后：
+your-project/
+├── .claude/
+│   ├── settings.json                    # Hook配置
+│   ├── cc-supervisor-rules.txt         # 监工规则（可自定义）
+│   ├── cc-supervisor-config.json       # 语言和命令配置
+│   └── hooks/
+│       └── cc-supervisor-stop.sh      # 监工Hook脚本
+
+调试日志：
+/tmp/cc-supervisor/
+└── {项目名}/
+    └── {session-id}/
+        ├── debug.log      # 执行轨迹
+        ├── transcript.json # 对话副本
+        └── project/       # 项目软链接
+```
+
+## 📄 许可证
 
 MIT
+
+## 🤝 贡献
+
+1. Fork项目并创建feature分支
+2. 运行测试确保功能正常
+3. 提交PR并说明改动内容
+
+## ❓ 常见问题
+
+**Q: 为什么监工没有触发？**
+A: 检查`.claude/settings.json`配置，确保在新Claude会话中测试
+
+**Q: 如何临时禁用监工？**
+A: 删除或重命名`.claude/cc-supervisor-rules.txt`
+
+**Q: 监工检查超时？**
+A: 默认超时为20分钟，可在`settings.json`中调整
+
+**Q: 调试日志在哪里？**
+A: `/tmp/cc-supervisor/{项目名}/{session-id}/debug.log`
