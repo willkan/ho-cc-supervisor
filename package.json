@@ -1,16 +1,13 @@
 {
   "name": "ho-cc-supervisor",
-  "version": "2.0.2",
-  "description": "Claude Code Supervisor - AI-powered code quality verification system",
-  "main": "lib/claude-verify-simple.js",
+  "version": "3.0.0",
+  "description": "Claude智能监工 - 防止Claude偷懒的极简Hook系统",
+  "main": ".bin/cc-supervisor",
   "bin": {
-    "cc-supervisor": "bin/cc-supervisor",
-    "cc-supervisor-claude": "bin/cc-supervisor-claude.js"
+    "cc-supervisor": "bin/cc-supervisor"
   },
   "scripts": {
-    "test": "echo \"Test completed - CLI functionality verified in build step\" && exit 0",
-    "status": "node bin/cc-supervisor status",
-    "show-report": "node bin/cc-supervisor show-report"
+    "test": "echo \"Test completed - CLI functionality verified in build step\" && exit 0"
   },
   "keywords": [
     "supervisor",
@@ -27,8 +24,7 @@
   "license": "MIT",
   "dependencies": {
     "chokidar": "^4.0.3",
-    "commander": "^11.1.0",
-    "node-pty": "^1.0.0"
+    "commander": "^11.1.0"
   },
   "engines": {
     "node": ">=14.0.0"

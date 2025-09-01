@@ -1,684 +1,417 @@
 #!/usr/bin/env node
 
 /**
- * CC-Supervisor CLI
- * Claude Code Supervisor - AI-powered code quality verification
+ * CC-Supervisor - Claude智能监工
+ * 极简CLI，只提供初始化功能
  */
 
 const { program } = require('commander');
 const path = require('path');
 const fs = require('fs');
-const { execSync, spawn } = require('child_process');
-const packageJson = require('../package.json');
-
-// 获取包的安装路径（用于定位验证器）
-const PACKAGE_ROOT = path.join(__dirname, '..');
+const { execSync } = require('child_process');
 
 // 设置版本和描述
 program
   .name('cc-supervisor')
-  .description('Claude Code Supervisor - AI-powered code quality verification')
-  .version(packageJson.version);
+  .description('Claude智能监工 - 防止Claude偷懒的极简Hook系统')
+  .version('3.0.0');
 
-// verify 命令 - 执行验证（供 hook 调用）
-program
-  .command('verify')
-  .description('执行验证（由 Stop hook 调用）')
-  .option('--json', '输出JSON格式用于hook集成')
-  .option('--silent', '静默模式，只输出结果')
-  .option('--session <id>', 'Session ID (passed by cc-supervisor-claude)')
-  .action(async (options) => {
-    const verifierPath = path.join(PACKAGE_ROOT, 'lib', 'claude-verify-simple.js');
-    
-    if (!fs.existsSync(verifierPath)) {
-      if (options.json) {
-        console.log(JSON.stringify({
-          continue: true,
-          systemMessage: "验证器未找到"
-        }));
-      } else {
-        console.error('❌ 验证器未找到');
-      }
-      process.exit(1);
-    }
-    
-    // 设置环境变量防止循环
-    if (process.env.CLAUDE_VERIFIER_MODE === 'true') {
-      if (options.json) {
-        console.log(JSON.stringify({ continue: true }));
-      } else if (!options.silent) {
-        console.log('⏭️  验证 Claude 不触发验证');
-      }
-      process.exit(0);
-    }
-    
-    // 确保日志目录存在
-    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor/completions');
-    fs.mkdirSync(logsDir, { recursive: true });
-    
-    // 记录日志
-    const logFile = path.join(logsDir, 'stop.log');
-    const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
-    fs.appendFileSync(logFile, `[${timestamp}] Stop hook triggered\n`);
-    fs.appendFileSync(logFile, '🤖 启动 Claude 智能验证 (claude -p 模式)...\n');
-    
-    // 运行验证器
-    try {
-      const SimpleClaudeVerifier = require(verifierPath);
-      const verifier = new SimpleClaudeVerifier({ projectRoot: process.cwd() });
-      const result = await verifier.verify();
-      
-      // 构建完整的验证反馈内容
-      const fullMessage = `📋 验证反馈:\n${result.response || '验证完成'}\n${!result.success ? '⚠️ 建议检查并修复上述问题' : '✅ 代码质量良好'}`;
-      
-      // 将完整结果记录到日志（包括所有细节）
-      fs.appendFileSync(logFile, '--- 验证结果开始 ---\n');
-      fs.appendFileSync(logFile, fullMessage + '\n');
-      fs.appendFileSync(logFile, '--- 验证结果结束 ---\n');
-      
-      // 同时保存到独立的详细日志文件
-      const detailedLogFile = path.join(logsDir, `verification-${Date.now()}.log`);
-      fs.writeFileSync(detailedLogFile, fullMessage);
-      
-      // 写入 issues 文件供 cc-supervisor 检测
-      // 更智能的检测：包含"问题"或有实质性"建议"时都写入
-      const hasActionableContent = result.response && (
-        result.response.includes('问题:') && !result.response.includes('问题: -') || // 有实际问题
-        result.response.includes('建议:') && !result.response.includes('建议: -') || // 有实际建议
-        result.response.includes('需要修复') ||
-        result.response.includes('需要改进') ||
-        result.response.includes('错误') ||
-        result.response.includes('失败') ||
-        !result.success
-      );
-      
-      if (hasActionableContent) {
-        // 获取项目路径和 session ID
-        const projectPath = process.cwd();
-        const projectName = projectPath.replace(/\//g, '-').replace(/^-/, '');
-        const supervisorDir = path.join(require('os').homedir(), '.cc-supervisor', 'projects', projectName);
-        
-        // 优先使用命令行参数中的 session ID，其次使用环境变量
-        const sessionId = options.session || process.env.SUPERVISOR_SESSION_ID;
-        
-        if (sessionId) {
-          // 确保目录存在
-          fs.mkdirSync(supervisorDir, { recursive: true });
-          const issuesFile = path.join(supervisorDir, `${sessionId}.issues`);
-          
-          // 写入问题文件
-          const issueMessage = `🔧 发现以下问题需要修复:\n\n${result.response}\n\n请根据上述反馈修复代码问题。`;
-          fs.writeFileSync(issuesFile, issueMessage);
-          fs.appendFileSync(logFile, `✍️ 问题已写入: ${issuesFile}\n`);
-        }
-      }
-      
-      if (options.json) {
-        // JSON 格式输出，用于 hook 集成
-        // Stop hook 使用 systemMessage 而不是 hookSpecificOutput
-        const output = {
-          continue: true,
-          systemMessage: fullMessage
-        };
-        console.log(JSON.stringify(output));
-        
-      } else {
-        // 人类可读格式
-        if (!result.success) {
-          // 验证失败时输出到 stderr，exit code 2
-          // 这会让 Claude Code 自动将反馈传递给 Worker Claude
-          console.error('\n❌ 验证发现问题需要处理：\n');
-          console.error(result.response || '验证失败');
-          console.error('\n请检查并修复上述问题');
-          process.exit(2); // exit code 2 会让 stderr 自动反馈给 Claude
-        } else {
-          // 验证成功，正常输出
-          console.log('\n✅ 验证通过');
-          console.log(`\n${result.response || '代码质量良好'}`);
-        }
-      }
-      
-    } catch (error) {
-      if (options.json) {
-        console.log(JSON.stringify({
-          continue: false,
-          systemMessage: `验证过程出错: ${error.message}`
-        }));
-      } else {
-        console.error('❌ 验证失败:', error.message);
-      }
-      // 记录错误到日志
-      fs.appendFileSync(logFile, `❌ 验证失败: ${error.message}\n`);
-      process.exit(1);
-    }
-  });
-
-// init 命令 - 初始化项目
+// init 命令 - 初始化监工系统
 program
   .command('init')
-  .description('在当前项目中初始化 CC-Supervisor')
-  .option('-f, --force', '强制覆盖已存在的配置')
-  .action((options) => {
-    const targetDir = process.cwd();
-    const sourceDir = path.join(__dirname, '..');
-    
-    console.log('🚀 初始化 CC-Supervisor...');
-    
-    // 检查是否已存在配置
-    const claudeDir = path.join(targetDir, '.claude');
-    const settingsPath = path.join(claudeDir, 'settings.json');
-    const hasExistingConfig = fs.existsSync(settingsPath);
+  .description('初始化Claude监工系统')
+  .action(async () => {
+    console.log('🚀 初始化 Claude 智能监工...');
     
     try {
-      // 1. 处理 .claude/settings.json
-      if (hasExistingConfig && !options.force) {
-        console.log('📋 检测到现有 hooks 配置，智能合并中...');
-        
-        // 备份原配置
-        const backupPath = settingsPath + '.backup.' + Date.now();
-        fs.copyFileSync(settingsPath, backupPath);
-        console.log(`   备份原配置到: ${path.basename(backupPath)}`);
-        
-        // 读取现有配置
-        const existingConfig = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-        const supervisorConfig = JSON.parse(fs.readFileSync(path.join(sourceDir, '.claude/settings.json'), 'utf-8'));
-        
-        // 智能合并配置
-        if (!existingConfig.hooks) {
-          existingConfig.hooks = {};
-        }
-        
-        // 合并 Stop hook
-        if (existingConfig.hooks.Stop) {
-          console.log('   ⚠️  已存在 Stop hook，将创建 supervisor-stop.sh 作为补充');
-          // 创建独立的 supervisor hook
-          const supervisorStopPath = path.join(claudeDir, 'hooks', 'supervisor-stop.sh');
-          fs.mkdirSync(path.join(claudeDir, 'hooks'), { recursive: true });
-          fs.copyFileSync(path.join(sourceDir, '.claude/hooks/stop.sh'), supervisorStopPath);
-          console.log('   💡 请手动在原 Stop hook 中调用 supervisor-stop.sh');
-        } else {
-          existingConfig.hooks.Stop = supervisorConfig.hooks.Stop;
-          console.log('   ✅ 添加 Stop hook');
-        }
-        
-        // 合并 PostToolUse hooks (新格式：数组)
-        if (!existingConfig.hooks.PostToolUse) {
-          existingConfig.hooks.PostToolUse = supervisorConfig.hooks.PostToolUse;
-          console.log('   ✅ 添加 PostToolUse hooks');
-        } else {
-          console.log('   ⏭️  跳过已存在的 PostToolUse hooks');
-        }
-        
-        // 合并 UserPromptSubmit hook
-        if (!existingConfig.hooks.UserPromptSubmit) {
-          existingConfig.hooks.UserPromptSubmit = supervisorConfig.hooks.UserPromptSubmit;
-          console.log('   ✅ 添加 UserPromptSubmit hook');
-        } else {
-          console.log('   ⏭️  跳过已存在的 UserPromptSubmit hook');
-        }
-        
-        // 写入合并后的配置
-        fs.writeFileSync(settingsPath, JSON.stringify(existingConfig, null, 2));
-        console.log('✅ 配置合并完成');
-        
-      } else if (options.force) {
-        // 强制覆盖模式
-        console.log('⚠️  强制覆盖模式...');
-        if (hasExistingConfig) {
-          const backupPath = settingsPath + '.backup.' + Date.now();
-          fs.copyFileSync(settingsPath, backupPath);
-          console.log(`   备份原配置到: ${path.basename(backupPath)}`);
-        }
-        
-        // 复制整个 .claude 目录
-        execSync(`cp -r "${path.join(sourceDir, '.claude')}" "${targetDir}/"`, { stdio: 'pipe' });
-        console.log('✅ 配置已覆盖');
-        
-      } else {
-        // 全新安装
-        console.log('📁 创建 hooks 配置...');
-        execSync(`cp -r "${path.join(sourceDir, '.claude')}" "${targetDir}/"`, { stdio: 'pipe' });
-      }
-      
-      // 2. 复制 hook 脚本（不覆盖已存在的）
+      // 创建 .claude 目录
+      const claudeDir = '.claude';
       const hooksDir = path.join(claudeDir, 'hooks');
-      fs.mkdirSync(hooksDir, { recursive: true });
       
-      const sourceHooks = fs.readdirSync(path.join(sourceDir, '.claude/hooks'));
-      sourceHooks.forEach(hook => {
-        const targetPath = path.join(hooksDir, hook);
-        if (!fs.existsSync(targetPath) || options.force) {
-          fs.copyFileSync(path.join(sourceDir, '.claude/hooks', hook), targetPath);
-          console.log(`   ✅ 复制 ${hook}`);
+      if (!fs.existsSync(claudeDir)) {
+        fs.mkdirSync(claudeDir, { recursive: true });
+      }
+      
+      if (!fs.existsSync(hooksDir)) {
+        fs.mkdirSync(hooksDir, { recursive: true });
+      }
+
+      // 复制监工Hook脚本（从templates目录）
+      const packageRoot = path.join(__dirname, '..');
+      const sourceHook = path.join(packageRoot, 'templates', 'hooks', 'cc-supervisor-stop.sh');
+      const sourceRules = path.join(packageRoot, 'templates', 'cc-supervisor-rules.txt');
+      const sourceConfig = path.join(packageRoot, 'templates', 'cc-supervisor-config.json');
+      
+      // 使用更具体的文件名避免冲突
+      const targetHook = path.join(hooksDir, 'cc-supervisor-stop.sh');
+      const targetRules = path.join(claudeDir, 'cc-supervisor-rules.txt');
+      const targetConfig = path.join(claudeDir, 'cc-supervisor-config.json');
+
+      if (fs.existsSync(sourceHook)) {
+        fs.copyFileSync(sourceHook, targetHook);
+        fs.chmodSync(targetHook, 0o755);
+        console.log('📄 监工Hook已安装');
+      }
+
+      if (fs.existsSync(sourceRules)) {
+        if (!fs.existsSync(targetRules)) {
+          fs.copyFileSync(sourceRules, targetRules);
+          console.log('📋 默认监工规则已安装');
         } else {
-          console.log(`   ⏭️  保留现有 ${hook}`);
+          console.log('⏭️ 保留现有监工规则');
         }
-      });
+      }
+
+      if (fs.existsSync(sourceConfig)) {
+        if (!fs.existsSync(targetConfig)) {
+          fs.copyFileSync(sourceConfig, targetConfig);
+          console.log('⚙️ 监工配置文件已安装');
+        } else {
+          console.log('⏭️ 保留现有监工配置');
+        }
+      }
+
+      // 更新或创建 settings.json
+      const settingsPath = path.join(claudeDir, 'settings.json');
+      let settings = { hooks: {} };
       
-      // 3. 不再复制 lib 文件，使用全局安装的 cc-supervisor
-      
-      // 4. 创建 logs 目录
-      console.log('📁 创建日志目录...');
-      execSync(`mkdir -p "${targetDir}/logs/cc-supervisor/completions" "${targetDir}/logs/cc-supervisor/checks" "${targetDir}/logs/cc-supervisor/intents"`, { stdio: 'pipe' });
-      
-      // 5. 设置执行权限
-      console.log('🔧 设置脚本权限...');
-      execSync(`chmod +x "${hooksDir}/"*.sh 2>/dev/null || true`, { stdio: 'pipe' });
-      
-      // 6. 更新 hook 脚本使用 CLI 命令
-      updateHookScripts(hooksDir);
-      
-      console.log('✅ CC-Supervisor 初始化成功！');
-      console.log('');
-      
-      if (hasExistingConfig && !options.force) {
-        console.log('⚠️  注意：');
-        console.log('   由于你已有 hooks 配置，部分 hooks 可能需要手动整合');
-        console.log('   查看 .claude/settings.json.backup.* 了解原配置');
-        console.log('');
+      if (fs.existsSync(settingsPath)) {
+        try {
+          settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        } catch (err) {
+          console.log('⚠️ 现有settings.json格式错误，将创建新的');
+        }
+      }
+
+      // 配置Stop Hook (官方格式) - 20分钟超时
+      // 保留现有的Stop hooks，添加我们的
+      if (!settings.hooks) {
+        settings.hooks = {};
+      }
+      if (!settings.hooks.Stop) {
+        settings.hooks.Stop = [];
       }
       
-      console.log('下一步：');
-      console.log('1. 启动新的 Claude Code 会话: claude');
-      console.log('2. 正常工作，验证会自动运行');
-      console.log('3. 查看验证报告: npx cc-supervisor show-report');
-      console.log('4. 查看系统状态: npx cc-supervisor status');
+      // 检查是否已经有我们的hook
+      const ourHookCommand = "$CLAUDE_PROJECT_DIR/.claude/hooks/cc-supervisor-stop.sh";
+      let hasOurHook = false;
       
-    } catch (error) {
-      console.error('❌ 初始化失败:', error.message);
-      process.exit(1);
-    }
-  });
-
-// 辅助函数：更新 hook 脚本使用 CLI 命令
-function updateHookScripts(hooksDir) {
-  // 不再重写hooks，保持从源目录复制的完整版本
-  // 这些hooks已经在前面的步骤中从 .claude/hooks/ 复制过来了，包含完整功能
-  
-  // 只需要确保权限正确
-  const hooks = fs.readdirSync(hooksDir).filter(f => f.endsWith('.sh'));
-  hooks.forEach(hook => {
-    const hookPath = path.join(hooksDir, hook);
-    execSync(`chmod +x "${hookPath}"`);
-  });
-}
-
-// show-report 命令 - 查看验证报告
-program
-  .command('show-report')
-  .description('查看验证历史报告')
-  .option('-n, --lines <number>', '显示最近的N条记录', '10')
-  .option('-f, --follow', '实时跟踪日志')
-  .option('--json', '以JSON格式输出')
-  .option('--detailed', '显示详细的验证日志')
-  .option('--latest', '显示最新的完整验证结果')
-  .action((options) => {
-    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor');
-    
-    if (!fs.existsSync(logsDir)) {
-      console.error('❌ 未找到日志目录！请先运行 cc-supervisor init');
-      process.exit(1);
-    }
-    
-    const logFile = path.join(logsDir, 'completions', 'stop.log');
-    
-    if (!fs.existsSync(logFile) && !options.latest && !options.detailed) {
-      console.log('📋 暂无验证记录');
-      return;
-    }
-    
-    // 显示最新的完整验证结果
-    if (options.latest) {
-      const verificationFiles = fs.readdirSync(logsDir)
-        .filter(file => file.startsWith('verification-') && file.endsWith('.log'))
-        .sort((a, b) => {
-          const timeA = parseInt(a.match(/verification-(\d+)\.log/)[1]);
-          const timeB = parseInt(b.match(/verification-(\d+)\.log/)[1]);
-          return timeB - timeA;
+      for (const stopConfig of settings.hooks.Stop) {
+        if (stopConfig.hooks) {
+          for (const hook of stopConfig.hooks) {
+            if (hook.command === ourHookCommand) {
+              hasOurHook = true;
+              // 更新超时时间
+              hook.timeout = 1200;
+              break;
+            }
+          }
+        }
+      }
+      
+      // 如果没有我们的hook，添加它
+      if (!hasOurHook) {
+        settings.hooks.Stop.push({
+          "hooks": [{
+            "type": "command",
+            "command": ourHookCommand,
+            "timeout": 1200
+          }]
         });
-      
-      if (verificationFiles.length === 0) {
-        console.log('📋 暂无详细验证记录');
-        return;
       }
-      
-      const latestFile = path.join(logsDir, verificationFiles[0]);
-      const content = fs.readFileSync(latestFile, 'utf-8');
-      
-      console.log('📋 最新验证结果（完整版）\n');
-      console.log('═'.repeat(60));
-      console.log(content);
-      console.log('═'.repeat(60));
-      
-      const timestamp = new Date(parseInt(verificationFiles[0].match(/verification-(\d+)\.log/)[1]));
-      console.log(`\n🕐 验证时间: ${timestamp.toLocaleString()}`);
-      return;
+
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      console.log('⚙️ Claude Code settings已更新');
+
+      console.log('');
+      console.log('✅ Claude智能监工初始化完成！');
+      console.log('');
+      console.log('📖 使用说明:');
+      console.log('1. 启动Claude Code正常工作');
+      console.log('2. 监工会自动检查Claude的工作质量');
+      console.log('3. 发现偷懒行为时会自动要求重做');
+      console.log('4. 可编辑 .claude/cc-supervisor-rules.txt 自定义监工规则');
+      console.log('5. 可编辑 .claude/cc-supervisor-config.json 配置Claude命令参数');
+
+    } catch (err) {
+      console.error('❌ 初始化失败:', err.message);
+      process.exit(1);
     }
+  });
+
+// logs 命令 - 查看调试日志
+program
+  .command('logs')
+  .description('查看监工系统的调试日志')
+  .option('-f, --follow', '实时跟踪最新的现有日志 (tail -f)')
+  .option('-w, --watch', '等待并监控新的监工session')
+  .option('-n, --lines <number>', '显示最后N行日志', '20')
+  .option('--session <id>', '查看特定session的日志')
+  .option('--list', '列出所有可用的日志文件')
+  .action(async (options) => {
+    console.log('📋 查看监工调试日志...');
     
-    // 显示详细的验证记录
-    if (options.detailed) {
-      const content = fs.readFileSync(logFile, 'utf-8');
-      const sections = content.split('--- 验证结果开始 ---');
-      
-      if (sections.length <= 1) {
-        console.log('📋 暂无详细验证记录（请更新到最新版本）');
-        return;
-      }
-      
-      console.log('📋 详细验证历史\n');
-      console.log('═'.repeat(60));
-      
-      // 显示最近的几条详细记录
-      const detailedRecords = sections.slice(-Math.min(sections.length - 1, parseInt(options.lines)));
-      
-      detailedRecords.forEach((section, index) => {
-        if (section.includes('--- 验证结果结束 ---')) {
-          const result = section.split('--- 验证结果结束 ---')[0];
-          if (index > 0) console.log('\n' + '─'.repeat(60) + '\n');
-          console.log(result.trim());
+    const projectDir = process.cwd();
+    const projectName = projectDir.replace(/\//g, '-');
+    const logsBaseDir = `/tmp/cc-supervisor/${projectName}`;
+    
+    // 列出所有日志
+    if (options.list) {
+      try {
+        if (!fs.existsSync(logsBaseDir)) {
+          console.log('❌ 当前项目没有调试日志');
+          return;
         }
-      });
-      
-      console.log('\n' + '═'.repeat(60));
+        
+        const sessions = fs.readdirSync(logsBaseDir);
+        if (sessions.length === 0) {
+          console.log('❌ 没有找到任何session日志');
+          return;
+        }
+        
+        console.log('\n可用的Session日志:');
+        sessions.forEach(session => {
+          const debugLog = path.join(logsBaseDir, session, 'debug.log');
+          if (fs.existsSync(debugLog)) {
+            const stats = fs.statSync(debugLog);
+            console.log(`  📁 ${session}`);
+            console.log(`     创建时间: ${stats.birthtime.toLocaleString()}`);
+            console.log(`     文件大小: ${(stats.size / 1024).toFixed(2)} KB`);
+          }
+        });
+        return;
+      } catch (err) {
+        console.error('❌ 读取日志目录失败:', err.message);
+        return;
+      }
+    }
+    
+    // 查看特定session或最新的日志
+    let targetLog;
+    
+    if (options.session) {
+      targetLog = path.join(logsBaseDir, options.session, 'debug.log');
+    } else {
+      // 找最新的日志
+      try {
+        if (!fs.existsSync(logsBaseDir)) {
+          console.log('❌ 当前项目没有调试日志');
+          console.log('💡 提示: 调试日志在监工检查时生成');
+          return;
+        }
+        
+        const sessions = fs.readdirSync(logsBaseDir)
+          .map(name => ({
+            name,
+            path: path.join(logsBaseDir, name, 'debug.log'),
+            time: fs.existsSync(path.join(logsBaseDir, name, 'debug.log')) 
+              ? fs.statSync(path.join(logsBaseDir, name, 'debug.log')).mtime 
+              : 0
+          }))
+          .filter(s => s.time > 0)
+          .sort((a, b) => b.time - a.time);
+        
+        if (sessions.length === 0) {
+          console.log('❌ 没有找到调试日志');
+          return;
+        }
+        
+        targetLog = sessions[0].path;
+        console.log(`📂 查看最新日志: ${sessions[0].name}`);
+      } catch (err) {
+        console.error('❌ 查找日志失败:', err.message);
+        return;
+      }
+    }
+    
+    // 检查日志文件是否存在
+    if (!fs.existsSync(targetLog)) {
+      console.log(`❌ 日志文件不存在: ${targetLog}`);
       return;
     }
     
-    if (options.follow) {
-      // 实时跟踪模式
-      console.log('📋 实时监控验证日志 (Ctrl+C 退出)...\n');
-      const tail = spawn('tail', ['-f', logFile]);
-      tail.stdout.pipe(process.stdout);
-      tail.stderr.pipe(process.stderr);
+    // 显示日志内容
+    if (options.watch) {
+      // 监控模式：等待新的session
+      console.log('📡 等待新的监工session... (Ctrl+C 退出)');
+      console.log(`监控目录: ${logsBaseDir}\n`);
       
+      const startTime = Date.now();
+      let currentTail = null;
+      let monitoredLog = null;
+      
+      // 监控目录，找到新的或更新的debug.log
+      const checkForLogs = () => {
+        if (!fs.existsSync(logsBaseDir)) {
+          // 目录还不存在，继续等待
+          setTimeout(checkForLogs, 1000);
+          return;
+        }
+        
+        // 遍历所有session查找debug.log
+        const sessions = fs.readdirSync(logsBaseDir);
+        for (const session of sessions) {
+          const debugLog = path.join(logsBaseDir, session, 'debug.log');
+          
+          if (fs.existsSync(debugLog)) {
+            const stats = fs.statSync(debugLog);
+            // 检查文件修改时间是否在监控开始之后
+            if (stats.mtimeMs > startTime && debugLog !== monitoredLog) {
+              console.log(`✅ 发现活动日志: ${session}`);
+              console.log(`📄 开始跟踪: ${debugLog}\n`);
+              
+              // 如果已有tail进程，先停止
+              if (currentTail) {
+                currentTail.kill();
+              }
+              
+              monitoredLog = debugLog;
+              
+              // 开始tail -f
+              const { spawn } = require('child_process');
+              currentTail = spawn('tail', ['-f', debugLog]);
+              
+              currentTail.stdout.on('data', (data) => {
+                process.stdout.write(data);
+              });
+              
+              currentTail.stderr.on('data', (data) => {
+                console.error(`错误: ${data}`);
+              });
+              
+              currentTail.on('close', (code) => {
+                if (code !== 0 && code !== null) {
+                  console.log(`\ntail进程退出，代码 ${code}`);
+                }
+                currentTail = null;
+              });
+              
+              return; // 找到后停止这次检查
+            }
+          }
+        }
+        
+        // 继续检查
+        setTimeout(checkForLogs, 1000);
+      };
+      
+      checkForLogs();
+      
+      // 处理Ctrl+C
       process.on('SIGINT', () => {
-        tail.kill();
+        if (currentTail) {
+          currentTail.kill();
+        }
+        console.log('\n👋 停止监控');
         process.exit(0);
       });
-    } else if (options.json) {
-      // JSON 输出模式
-      const content = fs.readFileSync(logFile, 'utf-8');
-      const records = parseLogRecords(content);
-      console.log(JSON.stringify(records.slice(-options.lines), null, 2));
-    } else {
-      // 普通查看模式
-      console.log('📋 验证历史报告\n');
-      console.log('─'.repeat(60));
       
-      const content = fs.readFileSync(logFile, 'utf-8');
-      const lines = content.split('\n').filter(line => line.trim());
-      const recent = lines.slice(-options.lines);
+      return; // 阻止执行后续代码
+    } else if (options.follow) {
+      // 传统的 tail -f 模式：跟踪现有日志
+      console.log('📡 实时跟踪日志 (Ctrl+C 退出)...\n');
+      const { spawn } = require('child_process');
+      const tail = spawn('tail', ['-f', targetLog]);
       
-      let currentSession = null;
-      recent.forEach(line => {
-        // 美化输出
-        if (line.includes('Stop hook triggered')) {
-          if (currentSession) console.log(''); // 添加空行分隔
-          console.log(`🔍 ${line}`);
-          currentSession = line;
-        } else if (line.includes('验证结果:')) {
-          console.log(`   ✅ ${line.replace('📋 ', '')}`);
-        } else if (line.includes('验证失败:')) {
-          console.log(`   ❌ ${line}`);
-        } else if (line.includes('启动 Claude 智能验证')) {
-          console.log(`   🤖 启动验证中...`);
-        } else if (line.includes('[跳过]')) {
-          console.log(`   ⏭️  ${line}`);
-        } else if (line.trim()) {
-          console.log(`   ${line}`);
+      tail.stdout.on('data', (data) => {
+        process.stdout.write(data);
+      });
+      
+      tail.stderr.on('data', (data) => {
+        console.error(`错误: ${data}`);
+      });
+      
+      tail.on('close', (code) => {
+        if (code !== 0) {
+          console.log(`tail进程退出，代码 ${code}`);
         }
       });
       
-      console.log('\n' + '─'.repeat(60));
-      console.log(`\n💡 提示: 使用 --follow 实时查看 | 使用 --json 输出JSON格式`);
-    }
-  });
-
-// status 命令 - 查看系统状态
-program
-  .command('status')
-  .description('查看 CC-Supervisor 状态')
-  .action(() => {
-    const claudeDir = path.join(process.cwd(), '.claude');
-    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor');
-    
-    console.log('🔍 CC-Supervisor 系统状态\n');
-    console.log('─'.repeat(60));
-    
-    // 检查安装状态
-    const isInstalled = fs.existsSync(claudeDir) && fs.existsSync(path.join(claudeDir, 'settings.json'));
-    console.log(`📦 安装状态: ${isInstalled ? '✅ 已安装' : '❌ 未安装'}`);
-    
-    if (isInstalled) {
-      // 检查配置文件
-      const settingsPath = path.join(claudeDir, 'settings.json');
-      const hasSettings = fs.existsSync(settingsPath);
-      console.log(`⚙️  配置文件: ${hasSettings ? '✅ 存在' : '❌ 缺失'}`);
-      
-      // 检查 hooks
-      const hooksDir = path.join(claudeDir, 'hooks');
-      if (fs.existsSync(hooksDir)) {
-        const hooks = fs.readdirSync(hooksDir).filter(f => f.endsWith('.sh'));
-        console.log(`🪝 Hooks 脚本: ${hooks.length} 个`);
-        hooks.forEach(hook => {
-          const hookPath = path.join(hooksDir, hook);
-          const isExecutable = fs.statSync(hookPath).mode & 0o111;
-          console.log(`   - ${hook} ${isExecutable ? '✅' : '❌ (需要执行权限)'}`);
-        });
-      }
-      
-      // 检查验证器（现在是全局安装的）
-      console.log(`🤖 验证器: ✅ cc-supervisor verify (全局命令)`);
-      
-      // 统计日志
-      if (fs.existsSync(logsDir)) {
-        const logFile = path.join(logsDir, 'completions', 'stop.log');
-        if (fs.existsSync(logFile)) {
-          const content = fs.readFileSync(logFile, 'utf-8');
-          const verifications = content.split('\n').filter(line => line.includes('Stop hook triggered')).length;
-          const lastLines = content.split('\n').filter(l => l.trim()).slice(-3);
-          console.log(`📊 验证次数: ${verifications} 次`);
-          if (lastLines.length > 0) {
-            console.log(`📝 最近验证:`);
-            lastLines.forEach(line => {
-              if (line.includes('验证 Claude 反馈')) {
-                console.log(`   ${line.substring(line.indexOf('验证 Claude 反馈'))}`);
-              }
-            });
-          }
-        } else {
-          console.log(`📊 验证次数: 0 次`);
-        }
-      }
-    }
-    
-    console.log('─'.repeat(60));
-    
-    if (!isInstalled) {
-      console.log('\n💡 运行 cc-supervisor init 来初始化');
-    } else {
-      console.log('\n✨ 系统就绪！启动 Claude Code 即可使用');
-    }
-  });
-
-// show-prompts 命令 - 查看 Supervisor 的验证提示历史
-program
-  .command('show-prompts')
-  .description('查看 Supervisor Claude 的验证提示历史')
-  .option('-n, --lines <number>', '显示最近的N条记录', '5')
-  .option('--latest', '显示最新的完整提示')
-  .action((options) => {
-    const promptsDir = path.join(process.cwd(), 'logs/cc-supervisor/prompts');
-    
-    if (!fs.existsSync(promptsDir)) {
-      console.log('📋 暂无验证提示历史');
-      return;
-    }
-    
-    const promptFiles = fs.readdirSync(promptsDir)
-      .filter(f => f.startsWith('prompt-') && f.endsWith('.txt'))
-      .sort((a, b) => {
-        const timeA = parseInt(a.match(/prompt-(\d+)\.txt/)[1]);
-        const timeB = parseInt(b.match(/prompt-(\d+)\.txt/)[1]);
-        return timeB - timeA;
+      // 处理Ctrl+C
+      process.on('SIGINT', () => {
+        tail.kill();
+        console.log('\n👋 停止跟踪');
+        process.exit(0);
       });
-    
-    if (promptFiles.length === 0) {
-      console.log('📋 暂无验证提示历史');
+      
       return;
-    }
-    
-    if (options.latest) {
-      // 显示最新的完整提示
-      const latestFile = path.join(promptsDir, promptFiles[0]);
-      const content = fs.readFileSync(latestFile, 'utf-8');
-      
-      console.log('📋 最新的 Supervisor 验证提示\n');
-      console.log('═'.repeat(60));
-      console.log(content);
-      console.log('═'.repeat(60));
     } else {
-      // 显示列表
-      const count = Math.min(promptFiles.length, parseInt(options.lines));
-      
-      console.log('📋 Supervisor 验证提示历史\n');
-      console.log('═'.repeat(60));
-      
-      for (let i = 0; i < count; i++) {
-        const file = promptFiles[i];
-        const filePath = path.join(promptsDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const firstLine = content.split('\n')[0];
-        const timestamp = firstLine.match(/\[(.*?)\]/)[1];
+      // 显示最后N行
+      try {
+        const content = fs.readFileSync(targetLog, 'utf-8');
+        const lines = content.split('\n');
+        const lastLines = lines.slice(-parseInt(options.lines) - 1).join('\n');
         
-        console.log(`\n${i + 1}. ${timestamp}`);
-        console.log(`   文件: ${file}`);
-        
-        // 显示前几行内容预览
-        const preview = content.split('\n').slice(2, 5).join('\n');
-        console.log(`   预览: ${preview.substring(0, 100)}...`);
+        console.log('');
+        console.log('─'.repeat(60));
+        console.log(lastLines);
+        console.log('─'.repeat(60));
+        console.log(`\n📍 日志位置: ${targetLog}`);
+        console.log(`💡 使用 -f 参数实时跟踪日志`);
+      } catch (err) {
+        console.error('❌ 读取日志失败:', err.message);
       }
-      
-      console.log('\n' + '═'.repeat(60));
-      console.log(`\n💡 使用 --latest 查看最新的完整提示`);
-      console.log(`💡 直接查看文件: cat logs/cc-supervisor/prompts/prompt-*.txt`);
     }
   });
 
 // clean 命令 - 清理日志
 program
   .command('clean')
-  .description('清理验证日志')
-  .option('--all', '清理所有日志')
-  .action((options) => {
-    const logsDir = path.join(process.cwd(), 'logs/cc-supervisor');
+  .description('清理监工系统的临时文件和日志')
+  .option('--all', '清理所有项目的日志')
+  .option('--days <number>', '清理N天前的日志', '7')
+  .action(async (options) => {
+    console.log('🧹 清理监工系统日志...');
     
-    if (!fs.existsSync(logsDir)) {
-      console.log('📋 没有日志需要清理');
+    const projectDir = process.cwd();
+    const projectName = projectDir.replace(/\//g, '-');
+    const logsBaseDir = options.all ? '/tmp/cc-supervisor' : `/tmp/cc-supervisor/${projectName}`;
+    
+    if (!fs.existsSync(logsBaseDir)) {
+      console.log('✅ 没有需要清理的日志');
       return;
     }
     
-    console.log('🧹 清理日志...');
-    
-    if (options.all) {
-      // 清理所有日志
-      execSync(`rm -rf "${logsDir}"/*`, { stdio: 'pipe' });
-      console.log('✅ 所有日志已清理');
-    } else {
-      // 只清理30天前的日志
-      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      cleanOldLogs(logsDir, thirtyDaysAgo);
-      console.log('✅ 已清理30天前的日志');
-    }
-  });
-
-// test 命令 - 测试验证功能
-program
-  .command('test')
-  .description('测试验证功能')
-  .action(() => {
-    console.log('🧪 测试 CC-Supervisor 验证功能...\n');
-    
-    const testFile = path.join(process.cwd(), 'test-verify.js');
-    
-    // 创建测试文件
-    fs.writeFileSync(testFile, `
-function add(a, b) {
-  return a + b;
-}
-
-console.log('Test file created by cc-supervisor');
-`);
-    
-    console.log('✅ 创建测试文件: test-verify.js');
-    
-    // 手动触发验证
-    const stopHook = path.join(process.cwd(), '.claude/hooks/stop.sh');
-    if (fs.existsSync(stopHook)) {
-      console.log('🤖 触发验证...\n');
+    try {
+      const days = parseInt(options.days);
+      const cutoffTime = Date.now() - (days * 24 * 60 * 60 * 1000);
+      let cleanedCount = 0;
       
-      try {
-        execSync(`bash "${stopHook}"`, { 
-          stdio: 'inherit',
-          env: { ...process.env, CLAUDE_VERIFIER_MODE: 'false' }
+      // 递归清理旧日志
+      const cleanDir = (dir) => {
+        const items = fs.readdirSync(dir);
+        items.forEach(item => {
+          const itemPath = path.join(dir, item);
+          const stats = fs.statSync(itemPath);
+          
+          if (stats.isDirectory()) {
+            // 检查目录时间
+            if (stats.mtime.getTime() < cutoffTime) {
+              fs.rmSync(itemPath, { recursive: true, force: true });
+              cleanedCount++;
+              console.log(`  🗑️ 删除: ${item}`);
+            } else if (options.all) {
+              cleanDir(itemPath); // 递归清理子目录
+            }
+          }
         });
-      } catch (error) {
-        // 验证脚本可能返回非0，这是正常的
-      }
-    } else {
-      console.log('❌ 未找到验证脚本！请先运行 cc-supervisor init');
-    }
-    
-    // 清理测试文件
-    fs.unlinkSync(testFile);
-    console.log('\n✅ 测试完成，已清理测试文件');
-  });
-
-// 辅助函数：解析日志记录
-function parseLogRecords(content) {
-  const lines = content.split('\n');
-  const records = [];
-  let currentRecord = null;
-  
-  lines.forEach(line => {
-    const timestampMatch = line.match(/\[([\d-]+\s[\d:]+)\]/);
-    if (timestampMatch) {
-      if (currentRecord) {
-        records.push(currentRecord);
-      }
-      currentRecord = {
-        timestamp: timestampMatch[1],
-        message: line.substring(timestampMatch[0].length).trim(),
-        details: []
       };
-    } else if (currentRecord && line.trim()) {
-      currentRecord.details.push(line.trim());
+      
+      cleanDir(logsBaseDir);
+      
+      if (cleanedCount > 0) {
+        console.log(`✅ 清理了 ${cleanedCount} 个旧日志目录`);
+      } else {
+        console.log('✅ 没有需要清理的旧日志');
+      }
+      
+    } catch (err) {
+      console.error('❌ 清理失败:', err.message);
     }
   });
-  
-  if (currentRecord) {
-    records.push(currentRecord);
-  }
-  
-  return records;
-}
-
-// 辅助函数：清理旧日志
-function cleanOldLogs(dir, threshold) {
-  const files = fs.readdirSync(dir);
-  files.forEach(file => {
-    const filePath = path.join(dir, file);
-    const stat = fs.statSync(filePath);
-    
-    if (stat.isDirectory()) {
-      cleanOldLogs(filePath, threshold);
-    } else if (stat.isFile() && stat.mtime.getTime() < threshold) {
-      fs.unlinkSync(filePath);
-    }
-  });
-}
 
 // 解析命令行参数
-program.parse(process.argv);
+program.parse();
 
 // 如果没有提供命令，显示帮助
 if (!process.argv.slice(2).length) {

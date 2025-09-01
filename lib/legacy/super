@@ -1,8 +1,0 @@
-#!/usr/bin/env node
-
-/**
- * Super CLI Entry Point
- * Intelligent dual-Claude supervisor system
- */
-
-require('../lib/super.js');
