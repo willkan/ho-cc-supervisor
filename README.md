@@ -17,6 +17,7 @@ While the supervisor system provides quality assurance, it comes with some inher
 - **Potential False Positives**: Overly strict rules may block legitimate completions
 - **Dependency on Claude API**: Requires `claude -p` command to be available and properly configured
 - **Session Overhead**: Creates temporary files and logs that need periodic cleanup
+- **Possible Infinite Blocks**: The supervisor always checks quality even after previous blocks (`stop_hook_active=true`), which may cause repeated blocking if Claude cannot satisfy the requirements. This is by design - strict quality control over convenience.
 
 Consider these factors when deciding whether to enable the supervisor for your project.
 
@@ -258,3 +259,9 @@ A: Default timeout is 20 minutes, adjustable in `settings.json`
 
 **Q: Where are debug logs?**
 A: `/tmp/cc-supervisor/{project-name}/{session-id}/debug.log`
+
+**Q: Claude seems stuck in a loop, keeps getting blocked?**
+A: This is by design. The supervisor always checks quality regardless of `stop_hook_active`. If Claude cannot meet requirements, it will be blocked repeatedly. You can either:
+- Manually intervene and fix the issue
+- Temporarily disable supervisor by renaming `.claude/cc-supervisor-rules.txt`
+- Adjust the rules to be less strict

@@ -45,10 +45,12 @@ log_debug "stop_hook_active: $stop_hook_active"
 # 记录完整输入（脱敏处理）
 echo "$input" | jq '.' >> "$DEBUG_LOG" 2>/dev/null || log_debug "输入JSON解析失败"
 
-# 防止无限循环（保留作为备用防护）
+# 记录stop_hook_active状态但不特殊处理
+# 注意：即使stop_hook_active=true也会继续检查，可能导致循环阻止
+# 这是设计决定：宁可严格也不放过偷懒行为
 if [ "$stop_hook_active" = "true" ]; then
-    log_debug "检测到stop_hook_active=true，退出避免循环"
-    exit 0  # 允许停止
+    log_debug "检测到stop_hook_active=true，继续执行监工检查（可能导致循环阻止）"
+    # 不退出，继续正常检查
 fi
 
 # 检查监工模板
