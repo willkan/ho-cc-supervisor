@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2] - 2025-09-01
+
+### Enhanced
+- 🔒 **Zero Tolerance Policy**: Strengthened supervisor rules with explicit zero tolerance for any errors
+- 💪 **Stricter Enforcement**: Supervisor cannot use "although...but..." rhetoric or make compromises
+- 🚫 **No Exception Rule**: Even 99% completion with 1 error must block
+- 📝 **Clearer Standards**: Added explicit enforcement standards for supervisor execution
+
+### Fixed
+- 🐛 **Supervisor Leniency**: Fixed issue where supervisor was too lenient with compilation errors
+- 🎯 **Enforcement Consistency**: Supervisor now strictly enforces its own rules without compromise
+
 ## [3.2.1] - 2025-09-01
 
 ### Fixed
