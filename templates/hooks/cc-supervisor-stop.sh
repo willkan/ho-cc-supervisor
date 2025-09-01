@@ -53,18 +53,44 @@ if [ "$stop_hook_active" = "true" ]; then
     # 不退出，继续正常检查
 fi
 
-# 检查监工模板
-supervisor_template=".claude/cc-supervisor-rules.txt"
-if [ ! -f "$supervisor_template" ]; then
-    log_debug "监工模板不存在: $supervisor_template"
+# 向上查找监工模板（支持在子目录工作）
+find_supervisor_rules() {
+    local current_dir="$1"
+    local max_depth=10  # 最多向上查找10层
+    local depth=0
+    
+    while [ "$depth" -lt "$max_depth" ]; do
+        if [ -f "$current_dir/.claude/cc-supervisor-rules.txt" ]; then
+            echo "$current_dir/.claude/cc-supervisor-rules.txt"
+            return 0
+        fi
+        
+        # 到达根目录或home目录就停止
+        if [ "$current_dir" = "/" ] || [ "$current_dir" = "$HOME" ]; then
+            return 1
+        fi
+        
+        current_dir=$(dirname "$current_dir")
+        depth=$((depth + 1))
+    done
+    
+    return 1
+}
+
+# 从当前目录开始向上查找监工规则
+supervisor_template=$(find_supervisor_rules "$PROJECT_DIR")
+
+if [ -z "$supervisor_template" ]; then
+    log_debug "未找到监工规则文件（向上查找了10层目录）"
     # 没有监工模板，允许停止
     exit 0
 fi
 
-log_debug "监工模板存在，继续执行监工检查"
+log_debug "找到监工规则: $supervisor_template"
 
-# 读取监工配置（如果存在）
-CONFIG_FILE=".claude/cc-supervisor-config.json"
+# 读取监工配置（从监工规则所在的目录）
+SUPERVISOR_DIR=$(dirname "$supervisor_template")
+CONFIG_FILE="$SUPERVISOR_DIR/cc-supervisor-config.json"
 if [ -f "$CONFIG_FILE" ]; then
     log_debug "读取监工配置: $CONFIG_FILE"
     CLAUDE_BASE=$(jq -r '.claude_command.base // "claude"' "$CONFIG_FILE")
