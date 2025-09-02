@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.1] - 2025-09-02
+
+### Added
+- 🌍 **Full i18n Support for Hook Script**: Complete internationalization of all debug messages
+- 📝 **Language-aware Debug Logs**: Debug messages now display in the language selected during init (zh-CN or en-US)
+- 🔧 **Early Locale Detection**: Moved locale reading before first log message to ensure consistent language usage
+
+### Fixed
+- 🐛 **Empty Debug Messages**: Fixed issue where initial debug messages were empty due to late locale detection
+- 📍 **Message Variable Initialization**: Ensured all message variables are defined before first use
+- 🧹 **Code Cleanup**: Removed duplicate locale configuration sections
+
 ## [3.3.0] - 2025-09-02
 
 ### Added
