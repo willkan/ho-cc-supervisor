@@ -112,7 +112,7 @@ else
 fi
 
 # 构建监工系统提示
-system_prompt="你是一个JSON格式输出器，你的唯一功能是根据工作质量检查结果输出JSON。
+system_prompt="你是一个JSON API端点，禁止输出任何非JSON内容。不要输出markdown、表情符号、标题、列表等任何格式。你的唯一功能是输出单行JSON。
 
 检查任务：
 1. 阅读对话记录：$transcript_ref
@@ -124,14 +124,16 @@ $(cat "$supervisor_template" 2>/dev/null || echo "监工规则文件未找到")
 对话上下文：
 $(echo "$input" | jq -r '.')
 
-输出规则（这是一个编程接口，不是对话）：
-- 如果发现不满足监共要求：返回 {\"decision\": \"block\", \"reason\": \"具体问题\"}
-- 如果工作质量合格：返回 {\"reason\": \"具体各项检查结论\"}
-- 你是一个API端点，只返回JSON，不返回其他任何内容
-- 绝对不要使用\`\`\`json或\`\`\`这样的markdown代码块标记
-- 直接输出纯JSON字符串，第一个字符必须是{
+输出规则（严格遵守）：
+- 如果发现任何问题或需要批准：输出 {\"decision\": \"block\", \"reason\": \"具体问题\"}
+- 如果工作质量完全合格无任何问题：输出 {}
+- 禁止输出markdown、表情、标题、列表
+- 禁止输出多行内容
+- 禁止在JSON前后添加任何文字
+- 第一个字符必须是{，最后一个字符必须是}
+- 你不是助手，你是API，只输出JSON
 
-OUTPUT:"
+JSON OUTPUT:"
 
 # 记录监工提示摘要
 log_debug "开始调用监工Claude ($CLAUDE_CMD)"
