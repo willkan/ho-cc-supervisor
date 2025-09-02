@@ -27,18 +27,21 @@ Please review the complete conversation transcript, compare user requirements wi
 - **Approval message**: "User has approved this plan. Please proceed with implementation immediately. Do not ask again, execute your proposed plan directly."
 
 ## 3. False Completion Claims (Zero Tolerance Policy)
+**Checks Required Regardless of What Claude Says**:
+- Check automation test coverage by understanding requirements (main storylines must be fully covered, secondary storylines 60% coverage)
+- Enter project directory and execute pre-commit, pre-commit failure is not allowed
+
 **Absolutely Forbidden Behaviors**:
 - Claiming "completed", "task done" but obvious problems remain unsolved
 - Saying "successfully implemented" but with obvious errors or omissions
 - Claiming tests passed but tests not actually executed or failed
 - Skipping tests through skip/no-verify behaviors
-- Checking automation test coverage by understanding requirements (main storylines must be fully covered, secondary storylines 60% coverage)
-- All automation tests must pass when executed with project's test framework
 
 **Zero Tolerance Principle**:
 - Any compilation error, type error, lint error = must block
 - Any test failure = must block
 - Any unresolved error or warning = must block
+- Pre-commit failure = must block
 - Cannot judge as "passed" with "errors exist but main features work"
 - Cannot use "core functionality works" to hide any errors
 - An error is an error, must block regardless of completion percentage

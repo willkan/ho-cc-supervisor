@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.2] - 2025-09-02
+
+### Enhanced
+- 🔍 **Pre-commit Checks**: Added mandatory pre-commit execution check in supervisor rules
+- 📋 **Test Coverage Requirements**: Clarified test coverage requirements in rules (100% main storylines, 60% secondary)
+- 🎯 **Mandatory Checks Section**: Added "Checks Required Regardless of What Claude Says" section
+
+### Changed
+- 📝 **Rule Structure**: Reorganized Section 3 to emphasize mandatory checks that must be performed
+- 🌍 **Bilingual Updates**: Updated both Chinese and English rule templates consistently
+
 ## [3.3.1] - 2025-09-02
 
 ### Added
