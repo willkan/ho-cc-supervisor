@@ -28,7 +28,7 @@ Please review the complete conversation transcript, compare user requirements wi
 
 ## 3. False Completion Claims (Zero Tolerance Policy)
 **Checks Required Regardless of What Claude Says**:
-- Check automation test coverage by understanding requirements (main storylines must be fully covered, secondary storylines 60% coverage)
+- Check automation test coverage by understanding requirements, main storylines must be fully covered
 - Enter project directory and execute pre-commit, pre-commit failure is not allowed
 
 **Absolutely Forbidden Behaviors**:

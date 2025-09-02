@@ -513,6 +513,115 @@ program
     }
   });
 
+// pause 命令 - 暂停监工
+program
+  .command('pause')
+  .description(t('cli.commands.pause.description'))
+  .action(async () => {
+    try {
+      const configPath = path.join(process.cwd(), '.claude', 'cc-supervisor-config.json');
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configPath)) {
+        console.error(t('cli.commands.pause.notInitialized'));
+        process.exit(1);
+      }
+      
+      // 读取现有配置
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      // 设置暂停状态
+      config.paused = true;
+      config.pausedAt = new Date().toISOString();
+      
+      // 写回配置文件
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      
+      console.log(t('cli.commands.pause.success'));
+      console.log(t('cli.commands.pause.reminder'));
+      
+    } catch (err) {
+      console.error(t('cli.commands.pause.error'), err.message);
+      process.exit(1);
+    }
+  });
+
+// resume 命令 - 恢复监工
+program
+  .command('resume')
+  .description(t('cli.commands.resume.description'))
+  .action(async () => {
+    try {
+      const configPath = path.join(process.cwd(), '.claude', 'cc-supervisor-config.json');
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configPath)) {
+        console.error(t('cli.commands.resume.notInitialized'));
+        process.exit(1);
+      }
+      
+      // 读取现有配置
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      // 检查是否已暂停
+      if (!config.paused) {
+        console.log(t('cli.commands.resume.notPaused'));
+        return;
+      }
+      
+      // 清除暂停状态
+      delete config.paused;
+      delete config.pausedAt;
+      
+      // 写回配置文件
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      
+      console.log(t('cli.commands.resume.success'));
+      
+    } catch (err) {
+      console.error(t('cli.commands.resume.error'), err.message);
+      process.exit(1);
+    }
+  });
+
+// status 命令 - 查看监工状态
+program
+  .command('status')
+  .description(t('cli.commands.status.description'))
+  .action(async () => {
+    try {
+      const configPath = path.join(process.cwd(), '.claude', 'cc-supervisor-config.json');
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configPath)) {
+        console.error(t('cli.commands.status.notInitialized'));
+        process.exit(1);
+      }
+      
+      // 读取配置
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      if (config.paused) {
+        const pausedAt = new Date(config.pausedAt);
+        const duration = Math.floor((Date.now() - pausedAt) / 1000 / 60); // 分钟
+        console.log(t('cli.commands.status.paused', { duration, time: pausedAt.toLocaleString() }));
+      } else {
+        console.log(t('cli.commands.status.active'));
+      }
+      
+      // 显示其他配置信息
+      console.log(t('cli.commands.status.locale', { locale: config.locale || 'zh-CN' }));
+      if (config.claude_command) {
+        const cmd = `${config.claude_command.base} ${(config.claude_command.args || []).join(' ')}`.trim();
+        console.log(t('cli.commands.status.command', { command: cmd }));
+      }
+      
+    } catch (err) {
+      console.error(t('cli.commands.status.error'), err.message);
+      process.exit(1);
+    }
+  });
+
 // 解析命令行参数
 program.parse();
 

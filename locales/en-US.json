@@ -68,6 +68,29 @@
         "cleanedCount": "✅ Cleaned {count} old log directories",
         "noOldLogs": "✅ No old logs to clean",
         "error": "❌ Cleanup failed:"
+      },
+      "pause": {
+        "description": "Pause supervisor checks",
+        "notInitialized": "❌ Supervisor not initialized in current project. Run cc-supervisor init first",
+        "success": "⏸️ Supervisor paused",
+        "reminder": "📌 Supervisor is paused. Use this only for inquiry conversations. Run cc-supervisor resume to restore supervision",
+        "error": "❌ Pause failed:"
+      },
+      "resume": {
+        "description": "Resume supervisor checks",
+        "notInitialized": "❌ Supervisor not initialized in current project. Run cc-supervisor init first",
+        "notPaused": "ℹ️ Supervisor is not currently paused",
+        "success": "▶️ Supervisor resumed",
+        "error": "❌ Resume failed:"
+      },
+      "status": {
+        "description": "View supervisor status",
+        "notInitialized": "❌ Supervisor not initialized in current project. Run cc-supervisor init first",
+        "paused": "⏸️ Supervisor status: Paused for {duration} minutes (since: {time})",
+        "active": "✅ Supervisor status: Active",
+        "locale": "🌍 Language: {locale}",
+        "command": "🔧 Claude command: {command}",
+        "error": "❌ Status query failed:"
       }
     }
   }

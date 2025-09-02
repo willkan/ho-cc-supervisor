@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2025-09-02
+
+### Added
+- ⏸️ **Pause/Resume Feature**: New commands to temporarily disable supervisor checks
+  - `cc-supervisor pause` - Pause supervisor for inquiry-only conversations
+  - `cc-supervisor resume` - Resume supervisor checks
+  - `cc-supervisor status` - View current supervisor status
+- 📋 **Status Command**: Check whether supervisor is active or paused
+- 🔕 **Pause State Logging**: Debug logs still record when supervisor is paused
+
+### Changed
+- 📝 **Rule Templates**: Removed secondary storyline 60% coverage requirement
+- 🔧 **Hook Enhancement**: Added pause state detection before rule checking
+- 🌍 **Bilingual Support**: Added translations for all new commands
+
+### Technical
+- Pause state stored in `.claude/cc-supervisor-config.json`
+- Hook displays reminder message when paused but still allows stop
+- Pause timestamp tracked for status display
+
 ## [3.3.2] - 2025-09-02
 
 ### Enhanced

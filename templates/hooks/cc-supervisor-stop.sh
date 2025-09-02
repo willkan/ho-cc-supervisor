@@ -39,14 +39,18 @@ log_debug() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$DEBUG_LOG"
 }
 
-# 先读取配置以确定语言设置
+# 先读取配置以确定语言设置和暂停状态
 supervisor_template="$PROJECT_DIR/.claude/cc-supervisor-rules.txt"
 SUPERVISOR_DIR=$(dirname "$supervisor_template")
 CONFIG_FILE="$SUPERVISOR_DIR/cc-supervisor-config.json"
 if [ -f "$CONFIG_FILE" ]; then
     LOCALE=$(jq -r '.locale // "zh-CN"' "$CONFIG_FILE")
+    PAUSED=$(jq -r '.paused // false' "$CONFIG_FILE")
+    PAUSED_AT=$(jq -r '.pausedAt // ""' "$CONFIG_FILE")
 else
     LOCALE="zh-CN"
+    PAUSED="false"
+    PAUSED_AT=""
 fi
 
 # 根据语言设置选择消息
@@ -95,6 +99,9 @@ if [ "$LOCALE" = "en-US" ]; then
     MSG_STDERR_CONTENT="stderr content:"
     MSG_SUPERVISOR_STDERR="Supervisor stderr output:"
     MSG_ORIGINAL_OUTPUT="Original output:"
+    MSG_PAUSED_STATUS="Supervisor is currently PAUSED"
+    MSG_PAUSED_SINCE="Paused since:"
+    MSG_PAUSED_REMINDER="For inquiry-only conversations. Run 'cc-supervisor resume' to restore supervision"
 else
     # 中文消息
     MSG_HOOK_START="===== 监工Hook开始 ====="
@@ -140,6 +147,9 @@ else
     MSG_STDERR_CONTENT="stderr内容:"
     MSG_SUPERVISOR_STDERR="监工stderr输出:"
     MSG_ORIGINAL_OUTPUT="原始输出:"
+    MSG_PAUSED_STATUS="监工当前处于暂停状态"
+    MSG_PAUSED_SINCE="暂停时间:"
+    MSG_PAUSED_REMINDER="仅用于询问类对话。运行 'cc-supervisor resume' 恢复监工"
 fi
 
 # 设置信号捕获（记录被杀原因）
@@ -166,6 +176,24 @@ echo "$input" | jq '.' >> "$DEBUG_LOG" 2>/dev/null || log_debug "输入JSON解�
 if [ "$stop_hook_active" = "true" ]; then
     log_debug "$MSG_STOP_HOOK_ACTIVE"
     # 不退出，继续正常检查
+fi
+
+# 检查是否处于暂停状态
+if [ "$PAUSED" = "true" ]; then
+    log_debug "$MSG_PAUSED_STATUS"
+    if [ -n "$PAUSED_AT" ]; then
+        log_debug "$MSG_PAUSED_SINCE $PAUSED_AT"
+    fi
+    log_debug "$MSG_PAUSED_REMINDER"
+    log_debug "$MSG_HOOK_END"
+    
+    # 暂停状态下直接允许停止，但要在stderr显示提醒
+    echo "# $MSG_PAUSED_STATUS" >&2
+    echo "# $MSG_PAUSED_REMINDER" >&2
+    
+    # 返回空对象允许停止
+    echo "{}"
+    exit 0
 fi
 
 # 直接检查项目根目录的监工规则（已在前面定义）
