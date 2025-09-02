@@ -3,6 +3,7 @@
 Please review the complete conversation transcript, compare user requirements with Claude's final delivery, and check for the following lazy and perfunctory behaviors:
 
 **Check Steps**:
+0. Enter the project directory (this is a symlink to the actual project, subsequent checks need to be executed in this directory)
 1. Identify specific user requirements and expectations from the conversation
 2. Review work content and plans that Claude promised to complete
 3. Compare whether Claude's final delivery truly meets the requirements
