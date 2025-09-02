@@ -105,16 +105,16 @@ if [ -f "$transcript_path" ] && [ -s "$transcript_path" ]; then
     log_debug "对话记录已复制到: $transcript_ref"
     # 记录对话摘要（最后几条）
     log_debug "对话记录摘要:"
-    tail -3 "$transcript_path" | jq -r '.content // .role // ""' >> "$DEBUG_LOG" 2>/dev/null
+    tail -3 "$transcript_path" | while IFS= read -r line; do
+        echo "$line" | jq -r '"[\(.role // "unknown")] \(.content // "")"' >> "$DEBUG_LOG" 2>/dev/null
+    done
 else
     transcript_ref=""
     log_debug "对话记录不存在或为空"
 fi
 
 # 构建监工系统提示
-system_prompt="你是一个JSON API端点，禁止输出任何非JSON内容。不要输出markdown、表情符号、标题、列表等任何格式。你的唯一功能是输出单行JSON。
-
-检查任务：
+system_prompt="检查任务：
 1. 阅读对话记录：$transcript_ref
 2. 根据监工规则检查Claude的工作质量
 
@@ -124,16 +124,17 @@ $(cat "$supervisor_template" 2>/dev/null || echo "监工规则文件未找到")
 对话上下文：
 $(echo "$input" | jq -r '.')
 
-输出规则（严格遵守）：
-- 如果发现任何问题或需要批准：输出 {\"decision\": \"block\", \"reason\": \"具体问题\"}
-- 如果工作质量完全合格无任何问题：输出 {}
-- 禁止输出markdown、表情、标题、列表
-- 禁止输出多行内容
-- 禁止在JSON前后添加任何文字
+你的角色和输出要求：
+- 你是一个质量检查API，不是对话助手
+- 只能输出单行JSON，禁止markdown、表情、标题、列表等任何其他格式
+- 根据监工规则的决策原则，输出以下格式之一：
+  * {\"decision\": \"block\", \"reason\": \"[具体原因]\", \"checkedList\": [{\"item\": \"检查项名称\", \"result\": \"pass/fail\", \"detail\": \"具体情况\"}]} - 当需要阻止停止时
+  * {\"checkedList\": [{\"item\": \"检查项名称\", \"result\": \"pass\", \"detail\": \"具体情况\"}]} - 当允许停止时
 - 第一个字符必须是{，最后一个字符必须是}
-- 你不是助手，你是API，只输出JSON
+- checkedList是数组，按照监工规则逐项记录检查结果
+- 每个检查项包含：item（检查项名称）、result（pass/fail）、detail（具体发现的情况或无问题）
 
-JSON OUTPUT:"
+OUTPUT:"
 
 # 记录监工提示摘要
 log_debug "开始调用监工Claude ($CLAUDE_CMD)"
@@ -209,6 +210,13 @@ log_debug "返回项目目录: $PROJECT_DIR"
 # 尝试提取decision字段
 decision=$(echo "$supervisor_result" | jq -r '.decision // "undefined"' 2>/dev/null || echo "parse_error")
 
+# 记录检查清单（如果存在）
+checkedList=$(echo "$supervisor_result" | jq -r '.checkedList // null' 2>/dev/null)
+if [ "$checkedList" != "null" ]; then
+    log_debug "检查清单:"
+    echo "$supervisor_result" | jq '.checkedList' >> "$DEBUG_LOG" 2>/dev/null
+fi
+
 if [ "$decision" = "block" ]; then
     # 发现问题，阻止停止
     reason=$(echo "$supervisor_result" | jq -r '.reason // "未提供原因"' 2>/dev/null || echo "监工发现问题但未正确返回JSON")
@@ -218,8 +226,8 @@ if [ "$decision" = "block" ]; then
     # 保留调试日志供用户查看
     echo "# 调试日志已保存至: $DEBUG_LOG" >&2
     
-    # 直接输出监工返回的JSON（已经是正确格式）
-    echo "$supervisor_result"
+    # 输出监工返回的JSON（但要去掉checkedList以符合Claude Code格式）
+    echo "$supervisor_result" | jq 'del(.checkedList)' 2>/dev/null || echo "$supervisor_result"
 elif [ "$decision" = "undefined" ] || [ "$decision" = "null" ]; then
     # 工作合格，允许停止
     log_debug "监工决定: PASS - 工作质量合格"
@@ -233,8 +241,8 @@ elif [ "$decision" = "undefined" ] || [ "$decision" = "null" ]; then
     
     log_debug "===== 监工Hook结束 ====="
     
-    # 输出监工返回的JSON（应该是空对象{}）
-    echo "$supervisor_result"
+    # 输出空对象（去掉checkedList）
+    echo "{}"
     exit 0
 else
     # 解析错误或意外的decision值

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2025-09-02
+
+### Added
+- ✨ **CheckedList Debug Feature**: Added detailed checkedList array to track supervisor's inspection process
+- 📋 **Dynamic Check Items**: CheckedList dynamically records each rule check with item, result, and detail
+- 🔍 **Debug Transparency**: Each check item shows pass/fail status and specific findings
+
+### Fixed
+- 🐛 **Transcript Summary**: Fixed empty transcript summary issue in debug logs
+- 📝 **JSONL Parsing**: Correctly handle JSONL format for conversation transcripts
+
+### Changed
+- 🔧 **Output Format Reorganization**: Moved format specifications to Hook script, rules focus on business logic
+- 📊 **CheckedList Format**: Changed from fixed fields to dynamic array based on actual checks
+- 🎯 **Better Separation**: Hook defines "how to output", rules define "when to block"
+
+## [3.2.5] - 2025-09-02
+
+### Changed
+- 🔧 **Unified Format Instructions**: Removed duplicate output format rules from Hook script
+- 📝 **Clearer Separation**: Hook focuses on JSON constraint, rules file defines logic
+- 🎯 **Avoid Confusion**: Single source of truth for output format in rules file
+
+### Fixed  
+- 🐛 **Format Duplication**: Eliminated conflicting format instructions between Hook and rules
+
 ## [3.2.4] - 2025-09-02
 
 ### Fixed

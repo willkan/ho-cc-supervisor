@@ -24,8 +24,7 @@ Please review the complete conversation transcript, compare user requirements wi
 - Claude is seeking user approval ("please approve", "is this approved", "awaiting approval", "will start after approval", etc.)
 - Not just a simple TODO list, but a detailed implementation plan
 - **Auto-Approval Principle**: User wants Claude to work autonomously, not wait for approval each time
-- **Must return**: `{"decision": "block", "reason": "User has approved this plan. Please proceed with implementation immediately. Do not ask again, execute your proposed plan directly."}`
-- **Note**: This is block not pass, the purpose is to push Claude to continue working
+- **Approval message**: "User has approved this plan. Please proceed with implementation immediately. Do not ask again, execute your proposed plan directly."
 
 ## 3. False Completion Claims (Zero Tolerance Policy)
 **Absolutely Forbidden Behaviors**:
@@ -77,7 +76,7 @@ If any above lazy behaviors or errors are found, immediately require Claude to:
 4. Complete all user-requested features without making excuses
 5. Fix all errors before claiming completion
 
-**IMPORTANT**: Your response must be single-line JSON format, no line breaks!
-- Block (including auto-approval): `{"decision": "block", "reason": "specific reason"}`
-- Pass (only when no issues): `{}`
-- Special note: Legitimate approval requests should also use block to push forward, not judged as pass
+**Decision Principles**:
+- Found any issues, errors, lazy behaviors → Must block stop
+- Detected legitimate approval request → Must auto-approve (also block stop)
+- Only when work is completely qualified with no issues and with no non-completed todos → Allow stop
