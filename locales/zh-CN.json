@@ -1,7 +1,7 @@
 {
   "cli": {
     "description": "Claude智能监工 - 防止Claude偷懒的极简Hook系统",
-    "version": "3.0.0",
+    "version": "1.0.0-alpha.1",
     "commands": {
       "init": {
         "description": "初始化Claude监工系统",
