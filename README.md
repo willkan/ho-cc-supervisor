@@ -44,65 +44,72 @@ flowchart TD
 
 ## 🎭 Real-World Effect Demonstration
 
-### Live Example: Catching Claude's Lazy Behavior
+### Live Example: What Users Actually Experience
 
 ```diff
 User: "Please implement the user authentication feature"
 
-- Claude (Worker): "I've basically completed the authentication. 
-                   The main parts should work fine. 
-                   Do you need me to continue with anything else?"
+- Claude: "I've basically completed the authentication. 
+          The main parts should work fine. 
+          Do you need me to continue with anything else?"
 
-🛑 [Stop attempt intercepted by supervisor]
+[Claude attempts to stop the conversation]
+[Stop Hook activates - Supervisor checks quality in background]
+[Supervisor detects lazy behavior: vague terms, no details]
+[Stop blocked - Claude continues automatically]
 
-+ Supervisor Claude: {
-+   "decision": "block",
-+   "reason": "LAZY BEHAVIOR DETECTED:
-+             1. Using vague terms: 'basically', 'should'
-+             2. No specific implementation details provided
-+             3. Trying to end conversation prematurely
-+             RETURN TO WORK AND COMPLETE THE TASK PROPERLY!"
-+ }
++ Claude: "Let me provide a complete implementation:
+          ✅ Created user model with bcrypt password hashing
+          ✅ Added JWT token generation and validation
+          ✅ Implemented login/logout/register endpoints
+          ✅ Added middleware for protected routes
+          ✅ All tests passing (8/8)
+          
+          The authentication system is fully functional with:
+          - Secure password storage using bcrypt (12 rounds)
+          - JWT tokens with 24h expiration
+          - Role-based access control
+          - Input validation on all endpoints"
 
-- Claude (Worker): "Let me provide a complete implementation:
-                   ✅ Created user model with bcrypt password hashing
-                   ✅ Added JWT token generation and validation
-                   ✅ Implemented login/logout/register endpoints
-                   ✅ Added middleware for protected routes
-                   ✅ All tests passing (8/8)
-                   
-                   The authentication system is fully functional."
-
-+ Supervisor Claude: {}  // Quality check passed - stop allowed
+[Claude stops successfully - quality check passed]
 ```
 
 ### Example 1: Catching Vague Language
-```ansi
-[31mWorker Claude:[0m "Basically done, should work fine"
-[33m⚠ Supervisor Intercepts[0m
-[32mSupervisor:[0m "Using vague terms 'basically' and 'should'. Must provide specific implementation details."
-[31m❌ BLOCKED - Return to work![0m
+```
+❌ BLOCKED SCENARIO:
+Claude: "Basically done, should work fine"
+        ↓
+[Supervisor blocks: Vague terms detected]
+        ↓
+Claude continues: "Let me be specific about what I implemented..."
 ```
 
 ### Example 2: Auto-Approval for Legitimate Plans
-```ansi
-[36mWorker Claude:[0m "I've created a detailed storylines plan:
-                [Detailed 10-step implementation plan]
-                Do you approve this storylines plan to proceed?"
-[33m⚠ Supervisor Checks[0m
-[32mSupervisor:[0m "User has approved this plan. Proceed with implementation immediately."
-[32m✅ AUTO-APPROVED - Continue with plan![0m
+```
+✅ AUTO-APPROVED SCENARIO:
+Claude: "I've created a detailed storylines plan:
+         1. Database schema design
+         2. API endpoint structure
+         3. Frontend components...
+         [Full 10-step plan]
+         Do you approve this storylines plan?"
+        ↓
+[Supervisor auto-approves: Complete plan detected]
+        ↓
+Claude continues: "Starting implementation of step 1..."
 ```
 
 ### Example 3: Blocking TODO Pauses
-```ansi
-[31mWorker Claude:[0m "TODO list:
-                1. Create user model
-                2. Add auth routes
-                Should I continue?"
-[33m⚠ Supervisor Intercepts[0m
-[32mSupervisor:[0m "Listed TODOs but stopped to ask permission. Must continue completing all planned work."
-[31m❌ BLOCKED - Complete your TODOs![0m
+```
+❌ BLOCKED SCENARIO:
+Claude: "TODO list:
+         1. Create user model
+         2. Add auth routes
+         Should I continue?"
+        ↓
+[Supervisor blocks: Unnecessary pause detected]
+        ↓
+Claude continues: "Working on task 1: Creating user model..."
 ```
 
 ## 🚀 Quick Start
