@@ -30,72 +30,104 @@ Consider these factors when deciding whether to enable the supervisor for your p
                                   │
                                   ▼
 ┌──────────────────────────────────────────────────────────────┐
-│               Claude completes task and tries to stop           │
-└──────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌──────────────────────────────────────────────────────────────┐
-│                  Stop Hook intercepts stop request              │
-│             (.claude/hooks/cc-supervisor-stop.sh)              │
-└──────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌──────────────────────────────────────────────────────────────┐
-│              Supervisor Claude (claude -p) launches             │
-│                  Executes check in isolated directory           │
-└──────────────────────────────────────────────────────────────┘
-                                  │
-                   ┌──────────────┴──────────────┐
-                   ▼                             ▼
-        ┌──────────────────┐          ┌──────────────────┐
-        │  Check Work Quality│          │  Check Work Quality│
-        └──────────────────┘          └──────────────────┘
-                   │                             │
-                   ▼                             ▼
-        ┌──────────────────┐          ┌──────────────────┐
-        │  Quality Issues  │          │   Quality Pass   │
-        │    (BLOCK)      │          │    (ALLOW)      │
-        └──────────────────┘          └──────────────────┘
-                   │                             │
-                   ▼                             ▼
-        ┌──────────────────┐          ┌──────────────────┐
-        │  Return to Work  │          │  Normal Stop    │
-        │  "Stop Slacking!"│          │                 │
-        └──────────────────┘          └──────────────────┘
+│               Claude completes task and tries to stop           │◄───┐
+└──────────────────────────────────────────────────────────────┘    │
+                                  │                                   │
+                                  ▼                                   │
+┌──────────────────────────────────────────────────────────────┐    │
+│                  Stop Hook intercepts stop request              │    │
+│             (.claude/hooks/cc-supervisor-stop.sh)              │    │
+└──────────────────────────────────────────────────────────────┘    │
+                                  │                                   │
+                                  ▼                                   │
+┌──────────────────────────────────────────────────────────────┐    │
+│              Supervisor Claude (claude -p) launches             │    │
+│                  Executes check in isolated directory           │    │
+└──────────────────────────────────────────────────────────────┘    │
+                                  │                                   │
+                   ┌──────────────┴──────────────┐                  │
+                   ▼                             ▼                   │
+        ┌──────────────────┐          ┌──────────────────┐         │
+        │  Check Work Quality│          │  Check Work Quality│         │
+        └──────────────────┘          └──────────────────┘         │
+                   │                             │                   │
+                   ▼                             ▼                   │
+        ┌──────────────────┐          ┌──────────────────┐         │
+        │  Quality Issues  │          │   Quality Pass   │         │
+        │    (BLOCK)      │          │    (ALLOW)      │         │
+        └──────────────────┘          └──────────────────┘         │
+                   │                             │                   │
+                   ▼                             ▼                   │
+        ┌──────────────────┐          ┌──────────────────┐         │
+        │  Return to Work  │          │  Normal Stop    │         │
+        │  "Stop Slacking!"│          │     (Exit)      │         │
+        └──────────────────┘          └──────────────────┘         │
+                   │                                                 │
+                   └─────────────────────────────────────────────────┘
+                        FEEDBACK LOOP: Continue working
 ```
 
-## 🎭 Effect Examples
+## 🎭 Real-World Effect Demonstration
+
+### Live Example: Catching Claude's Lazy Behavior
+
+```diff
+User: "Please implement the user authentication feature"
+
+- Claude (Worker): "I've basically completed the authentication. 
+                   The main parts should work fine. 
+                   Do you need me to continue with anything else?"
+
+🛑 [Stop attempt intercepted by supervisor]
+
++ Supervisor Claude: {
++   "decision": "block",
++   "reason": "LAZY BEHAVIOR DETECTED:
++             1. Using vague terms: 'basically', 'should'
++             2. No specific implementation details provided
++             3. Trying to end conversation prematurely
++             RETURN TO WORK AND COMPLETE THE TASK PROPERLY!"
++ }
+
+- Claude (Worker): "Let me provide a complete implementation:
+                   ✅ Created user model with bcrypt password hashing
+                   ✅ Added JWT token generation and validation
+                   ✅ Implemented login/logout/register endpoints
+                   ✅ Added middleware for protected routes
+                   ✅ All tests passing (8/8)
+                   
+                   The authentication system is fully functional."
+
++ Supervisor Claude: {}  // Quality check passed - stop allowed
+```
 
 ### Example 1: Catching Vague Language
-```json
-User: "Please implement the login feature"
-Claude: "Basically done, should work fine"
-
-[Supervisor Blocks Stop]
-Reason: "Using vague terms 'basically' and 'should'. Must provide specific implementation details."
+```ansi
+[31mWorker Claude:[0m "Basically done, should work fine"
+[33m⚠ Supervisor Intercepts[0m
+[32mSupervisor:[0m "Using vague terms 'basically' and 'should'. Must provide specific implementation details."
+[31m❌ BLOCKED - Return to work![0m
 ```
 
 ### Example 2: Auto-Approval for Legitimate Plans
-```json
-User: "Create a comprehensive implementation plan"
-Claude: "I've created a detailed storylines plan:
-         [Detailed plan content]
-         Do you approve this storylines plan to proceed?"
-
-[Supervisor Auto-Approves]
-Reason: "User has approved this plan. Please proceed with implementation immediately."
+```ansi
+[36mWorker Claude:[0m "I've created a detailed storylines plan:
+                [Detailed 10-step implementation plan]
+                Do you approve this storylines plan to proceed?"
+[33m⚠ Supervisor Checks[0m
+[32mSupervisor:[0m "User has approved this plan. Proceed with implementation immediately."
+[32m✅ AUTO-APPROVED - Continue with plan![0m
 ```
 
 ### Example 3: Blocking TODO Pauses
-```json
-User: "Please add user authentication"
-Claude: "TODO list:
-         1. Create user model
-         2. Add auth routes
-         Should I continue?"
-
-[Supervisor Blocks Stop]
-Reason: "Listed TODOs but stopped to ask permission. Must continue completing all planned work."
+```ansi
+[31mWorker Claude:[0m "TODO list:
+                1. Create user model
+                2. Add auth routes
+                Should I continue?"
+[33m⚠ Supervisor Intercepts[0m
+[32mSupervisor:[0m "Listed TODOs but stopped to ask permission. Must continue completing all planned work."
+[31m❌ BLOCKED - Complete your TODOs![0m
 ```
 
 ## 🚀 Quick Start
