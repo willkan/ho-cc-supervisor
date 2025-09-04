@@ -24,22 +24,22 @@ Consider these factors when deciding whether to enable the supervisor for your p
 ## 🔄 How It Works - Supervision Feedback Loop
 
 ```mermaid
-flowchart TD
-    A[User converses with Claude] --> B[Claude completes task and tries to stop]
-    B --> C{Stop Hook intercepts<br/>.claude/hooks/cc-supervisor-stop.sh}
-    C --> D[Supervisor Claude launches<br/>claude -p in isolated directory]
-    D --> E[Check Work Quality]
-    E --> F{Quality Check Result}
-    F -->|Quality Issues Found| G[🚫 BLOCK<br/>Return to Work<br/>'Stop Slacking!']
-    F -->|Quality Pass| H[✅ ALLOW<br/>Normal Stop<br/>Exit]
-    G -.->|FEEDBACK LOOP<br/>Continue working| B
+flowchart TB
+    A[User ↔ Claude] --> B[Claude tries to stop]
+    B --> C{Stop Hook}
+    C --> D[Supervisor checks]
+    D --> E{Quality?}
+    E -->|❌ Issues| F[BLOCK]
+    E -->|✅ Pass| G[ALLOW]
+    F -.->|Loop| B
     
-    style A fill:#e1f5fe
-    style B fill:#fff9c4
-    style C fill:#ffe0b2
-    style D fill:#f3e5f5
-    style G fill:#ffebee,stroke:#c62828
-    style H fill:#e8f5e9,stroke:#2e7d32
+    style A fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
+    style B fill:#fff3e0,stroke:#333,stroke-width:2px,color:#000
+    style C fill:#fff8e1,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#f3e5f5,stroke:#333,stroke-width:2px,color:#000
+    style E fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
+    style F fill:#ffcdd2,stroke:#d32f2f,stroke-width:3px,color:#000
+    style G fill:#c8e6c9,stroke:#388e3c,stroke-width:3px,color:#000
 ```
 
 ## 🎭 Real-World Effect Demonstration

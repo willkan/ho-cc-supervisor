@@ -24,22 +24,22 @@ Claude智能监工 - 防止Claude偷懒的极简Hook系统
 ## 🔄 工作原理 - 监督反馈循环
 
 ```mermaid
-flowchart TD
-    A[用户与Claude对话] --> B[Claude完成任务并尝试停止]
-    B --> C{Stop Hook 拦截<br/>.claude/hooks/cc-supervisor-stop.sh}
-    C --> D[监工Claude启动<br/>在隔离目录执行 claude -p]
-    D --> E[检查工作质量]
-    E --> F{质量检查结果}
-    F -->|发现质量问题| G[🚫 阻止<br/>返回继续工作<br/>'别偷懒！继续！']
-    F -->|质量合格| H[✅ 允许<br/>正常停止<br/>退出]
-    G -.->|反馈循环<br/>继续工作| B
+flowchart TB
+    A[用户 ↔ Claude] --> B[Claude尝试停止]
+    B --> C{Stop Hook}
+    C --> D[监工检查]
+    D --> E{质量?}
+    E -->|❌ 问题| F[阻止]
+    E -->|✅ 通过| G[允许]
+    F -.->|循环| B
     
-    style A fill:#e1f5fe
-    style B fill:#fff9c4
-    style C fill:#ffe0b2
-    style D fill:#f3e5f5
-    style G fill:#ffebee,stroke:#c62828
-    style H fill:#e8f5e9,stroke:#2e7d32
+    style A fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
+    style B fill:#fff3e0,stroke:#333,stroke-width:2px,color:#000
+    style C fill:#fff8e1,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#f3e5f5,stroke:#333,stroke-width:2px,color:#000
+    style E fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
+    style F fill:#ffcdd2,stroke:#d32f2f,stroke-width:3px,color:#000
+    style G fill:#c8e6c9,stroke:#388e3c,stroke-width:3px,color:#000
 ```
 
 ## 🎭 真实效果演示
