@@ -1,0 +1,97 @@
+{
+  "cli": {
+    "description": "Claude智能监工 - 防止Claude偷懒的极简Hook系统",
+    "version": "1.0.0",
+    "commands": {
+      "init": {
+        "description": "初始化Claude监工系统",
+        "selectLanguage": "请选择语言 / Please select language:",
+        "languages": {
+          "zh-CN": "中文",
+          "en-US": "English"
+        },
+        "initializing": "🚀 初始化 Claude 智能监工...",
+        "hookInstalled": "📄 监工Hook已安装",
+        "rulesInstalled": "📋 默认监工规则已安装",
+        "rulesPreserved": "⏭️ 保留现有监工规则",
+        "configInstalled": "⚙️ 监工配置文件已安装",
+        "configPreserved": "⏭️ 保留现有监工配置",
+        "settingsError": "⚠️ 现有settings.json格式错误，将创建新的",
+        "settingsUpdated": "⚙️ Claude Code settings已更新",
+        "complete": "✅ Claude智能监工初始化完成！",
+        "usage": "📖 使用说明:",
+        "usage1": "1. 启动Claude Code正常工作",
+        "usage2": "2. 监工会自动检查Claude的工作质量",
+        "usage3": "3. 发现偷懒行为时会自动要求重做",
+        "usage4": "4. 可编辑 .claude/cc-supervisor-rules.txt 自定义监工规则",
+        "usage5": "5. 可编辑 .claude/cc-supervisor-config.json 配置Claude命令参数",
+        "error": "❌ 初始化失败:"
+      },
+      "logs": {
+        "description": "查看监工系统的调试日志",
+        "followOption": "实时跟踪最新的现有日志 (tail -f)",
+        "watchOption": "等待并监控新的监工session",
+        "linesOption": "显示最后N行日志",
+        "sessionOption": "查看特定session的日志",
+        "listOption": "列出所有可用的日志文件",
+        "viewing": "📋 查看监工调试日志...",
+        "noLogs": "❌ 当前项目没有调试日志",
+        "noSessions": "❌ 没有找到任何session日志",
+        "availableSessions": "\n可用的Session日志:",
+        "createdAt": "创建时间:",
+        "fileSize": "文件大小:",
+        "noDebugLogs": "❌ 没有找到调试日志",
+        "viewingLatest": "📂 查看最新日志:",
+        "fileNotExist": "❌ 日志文件不存在:",
+        "waitingSession": "📡 等待新的监工session... (Ctrl+C 退出)",
+        "monitoringDir": "监控目录:",
+        "foundActive": "✅ 发现活动日志:",
+        "startTracking": "📄 开始跟踪:",
+        "tailExited": "\ntail进程退出，代码",
+        "stopMonitor": "\n👋 停止监控",
+        "realTimeTracking": "📡 实时跟踪日志 (Ctrl+C 退出)...",
+        "stopTracking": "\n👋 停止跟踪",
+        "logLocation": "\n📍 日志位置:",
+        "useTailTip": "💡 使用 -f 参数实时跟踪日志",
+        "generatedTip": "💡 提示: 调试日志在监工检查时生成",
+        "readError": "❌ 读取日志目录失败:",
+        "findError": "❌ 查找日志失败:",
+        "readFileError": "❌ 读取日志失败:"
+      },
+      "clean": {
+        "description": "清理监工系统的临时文件和日志",
+        "allOption": "清理所有项目的日志",
+        "daysOption": "清理N天前的日志",
+        "cleaning": "🧹 清理监工系统日志...",
+        "noNeedClean": "✅ 没有需要清理的日志",
+        "deleted": "🗑️ 删除:",
+        "cleanedCount": "✅ 清理了 {count} 个旧日志目录",
+        "noOldLogs": "✅ 没有需要清理的旧日志",
+        "error": "❌ 清理失败:"
+      },
+      "pause": {
+        "description": "暂停监工检查",
+        "notInitialized": "❌ 当前项目未初始化监工系统，请先运行 cc-supervisor init",
+        "success": "⏸️ 监工已暂停",
+        "reminder": "📌 监工处于暂停状态，仅询问类对话时使用。完成后请运行 cc-supervisor resume 恢复监工",
+        "error": "❌ 暂停失败:"
+      },
+      "resume": {
+        "description": "恢复监工检查",
+        "notInitialized": "❌ 当前项目未初始化监工系统，请先运行 cc-supervisor init",
+        "notPaused": "ℹ️ 监工当前未暂停",
+        "success": "▶️ 监工已恢复",
+        "error": "❌ 恢复失败:"
+      },
+      "status": {
+        "description": "查看监工状态",
+        "notInitialized": "❌ 当前项目未初始化监工系统，请先运行 cc-supervisor init",
+        "paused": "⏸️ 监工状态: 已暂停 {duration} 分钟 (暂停时间: {time})",
+        "active": "✅ 监工状态: 运行中",
+        "locale": "🌍 语言设置: {locale}",
+        "command": "🔧 Claude命令: {command}",
+        "error": "❌ 查询状态失败:"
+      }
+    }
+  }
+}

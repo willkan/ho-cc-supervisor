@@ -1,0 +1,631 @@
+#!/usr/bin/env node
+
+/**
+ * CC-Supervisor - Claude智能监工
+ * 极简CLI，支持国际化
+ */
+
+const { program } = require('commander');
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+const readline = require('readline');
+
+// 加载语言包
+let i18n = {};
+
+// 加载语言文件
+function loadLocale(lang) {
+  const localePath = path.join(__dirname, '..', 'locales', `${lang}.json`);
+  if (fs.existsSync(localePath)) {
+    i18n = JSON.parse(fs.readFileSync(localePath, 'utf-8'));
+    return true;
+  }
+  return false;
+}
+
+// 获取翻译文本
+function t(key, replacements = {}) {
+  const keys = key.split('.');
+  let value = i18n;
+  for (const k of keys) {
+    value = value?.[k];
+    if (!value) return key; // 如果找不到翻译，返回键名
+  }
+  // 替换占位符
+  let result = value;
+  for (const [placeholder, replacement] of Object.entries(replacements)) {
+    result = result.replace(`{${placeholder}}`, replacement);
+  }
+  return result;
+}
+
+// 询问用户选择
+function askQuestion(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise(resolve => rl.question(query, ans => {
+    rl.close();
+    resolve(ans);
+  }));
+}
+
+// 检查并加载保存的语言偏好
+function loadSavedLocale() {
+  const configPath = path.join('.claude', 'cc-supervisor-config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (config.locale && loadLocale(config.locale)) {
+        return true;
+      }
+    } catch (err) {
+      // 配置文件可能损坏，忽略
+    }
+  }
+  
+  // 尝试从环境变量加载
+  const envLang = process.env.LANG || process.env.LANGUAGE || '';
+  if (envLang.includes('zh') || envLang.includes('CN')) {
+    loadLocale('zh-CN');
+  } else {
+    loadLocale('en-US');
+  }
+  return false;
+}
+
+// 初始加载默认语言
+loadSavedLocale();
+
+// 设置版本和描述
+program
+  .name('cc-supervisor')
+  .description(t('cli.description'))
+  .version(t('cli.version'));
+
+// init 命令 - 初始化监工系统
+program
+  .command('init')
+  .description(t('cli.commands.init.description'))
+  .option('--lang <language>', 'Set language (zh-CN or en-US)')
+  .action(async (options) => {
+    // 如果没有指定语言，询问用户
+    let selectedLang = options.lang;
+    if (!selectedLang) {
+      console.log(t('cli.commands.init.selectLanguage'));
+      console.log('  1) 中文');
+      console.log('  2) English');
+      const answer = await askQuestion('Please choose (1 or 2): ');
+      selectedLang = answer === '2' ? 'en-US' : 'zh-CN';
+    }
+    
+    // 加载选择的语言
+    if (!loadLocale(selectedLang)) {
+      console.error(`Language ${selectedLang} not supported, using default`);
+      selectedLang = 'zh-CN';
+      loadLocale(selectedLang);
+    }
+    
+    console.log(t('cli.commands.init.initializing'));
+    
+    try {
+      // 创建 .claude 目录
+      const claudeDir = '.claude';
+      const hooksDir = path.join(claudeDir, 'hooks');
+      
+      if (!fs.existsSync(claudeDir)) {
+        fs.mkdirSync(claudeDir, { recursive: true });
+      }
+      
+      if (!fs.existsSync(hooksDir)) {
+        fs.mkdirSync(hooksDir, { recursive: true });
+      }
+
+      // 复制监工Hook脚本（从templates目录）
+      const packageRoot = path.join(__dirname, '..');
+      const sourceHook = path.join(packageRoot, 'templates', 'hooks', 'cc-supervisor-stop.sh');
+      
+      // 根据语言选择规则文件
+      const rulesFile = selectedLang === 'en-US' ? 'cc-supervisor-rules.en.txt' : 'cc-supervisor-rules.txt';
+      const sourceRules = path.join(packageRoot, 'templates', rulesFile);
+      
+      // 使用更具体的文件名避免冲突
+      const targetHook = path.join(hooksDir, 'cc-supervisor-stop.sh');
+      const targetRules = path.join(claudeDir, 'cc-supervisor-rules.txt');
+      const targetConfig = path.join(claudeDir, 'cc-supervisor-config.json');
+
+      if (fs.existsSync(sourceHook)) {
+        fs.copyFileSync(sourceHook, targetHook);
+        fs.chmodSync(targetHook, 0o755);
+        console.log(t('cli.commands.init.hookInstalled'));
+      }
+
+      if (fs.existsSync(sourceRules)) {
+        if (!fs.existsSync(targetRules)) {
+          fs.copyFileSync(sourceRules, targetRules);
+          console.log(t('cli.commands.init.rulesInstalled'));
+        } else {
+          console.log(t('cli.commands.init.rulesPreserved'));
+        }
+      }
+
+      // 更新配置文件，保存语言偏好
+      let config = {};
+      if (fs.existsSync(targetConfig)) {
+        try {
+          config = JSON.parse(fs.readFileSync(targetConfig, 'utf-8'));
+        } catch (err) {
+          // 配置文件损坏，使用默认配置
+        }
+      }
+      
+      // 保存语言偏好
+      config.locale = selectedLang;
+      if (!config.claude_command) {
+        config.claude_command = {
+          base: "claude",
+          args: ["-p"]
+        };
+      }
+      
+      fs.writeFileSync(targetConfig, JSON.stringify(config, null, 2));
+      console.log(t('cli.commands.init.configInstalled'));
+
+      // 更新或创建 settings.json
+      const settingsPath = path.join(claudeDir, 'settings.json');
+      let settings = { hooks: {} };
+      
+      if (fs.existsSync(settingsPath)) {
+        try {
+          settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        } catch (err) {
+          console.log(t('cli.commands.init.settingsError'));
+        }
+      }
+
+      // 配置Stop Hook (官方格式) - 20分钟超时
+      // 保留现有的Stop hooks，添加我们的
+      if (!settings.hooks) {
+        settings.hooks = {};
+      }
+      if (!settings.hooks.Stop) {
+        settings.hooks.Stop = [];
+      }
+      
+      // 检查是否已经有我们的hook
+      const ourHookCommand = "$CLAUDE_PROJECT_DIR/.claude/hooks/cc-supervisor-stop.sh";
+      let hasOurHook = false;
+      
+      for (const stopConfig of settings.hooks.Stop) {
+        if (stopConfig.hooks) {
+          for (const hook of stopConfig.hooks) {
+            if (hook.command === ourHookCommand) {
+              hasOurHook = true;
+              // 更新超时时间
+              hook.timeout = 1200;
+              break;
+            }
+          }
+        }
+      }
+      
+      // 如果没有我们的hook，添加它
+      if (!hasOurHook) {
+        settings.hooks.Stop.push({
+          "hooks": [{
+            "type": "command",
+            "command": ourHookCommand,
+            "timeout": 1200
+          }]
+        });
+      }
+
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      console.log(t('cli.commands.init.settingsUpdated'));
+
+      console.log('');
+      console.log(t('cli.commands.init.complete'));
+      console.log('');
+      console.log(t('cli.commands.init.usage'));
+      console.log(t('cli.commands.init.usage1'));
+      console.log(t('cli.commands.init.usage2'));
+      console.log(t('cli.commands.init.usage3'));
+      console.log(t('cli.commands.init.usage4'));
+      console.log(t('cli.commands.init.usage5'));
+
+    } catch (err) {
+      console.error(t('cli.commands.init.error'), err.message);
+      process.exit(1);
+    }
+  });
+
+// logs 命令 - 查看调试日志
+program
+  .command('logs')
+  .description(t('cli.commands.logs.description'))
+  .option('-f, --follow', t('cli.commands.logs.followOption'))
+  .option('-w, --watch', t('cli.commands.logs.watchOption'))
+  .option('-n, --lines <number>', t('cli.commands.logs.linesOption'), '20')
+  .option('--session <id>', t('cli.commands.logs.sessionOption'))
+  .option('--list', t('cli.commands.logs.listOption'))
+  .action(async (options) => {
+    console.log(t('cli.commands.logs.viewing'));
+    
+    const projectDir = process.cwd();
+    const projectName = projectDir.replace(/\//g, '-');
+    const logsBaseDir = `/tmp/cc-supervisor/${projectName}`;
+    
+    // 列出所有日志
+    if (options.list) {
+      try {
+        if (!fs.existsSync(logsBaseDir)) {
+          console.log(t('cli.commands.logs.noLogs'));
+          return;
+        }
+        
+        const sessions = fs.readdirSync(logsBaseDir);
+        if (sessions.length === 0) {
+          console.log(t('cli.commands.logs.noSessions'));
+          return;
+        }
+        
+        console.log(t('cli.commands.logs.availableSessions'));
+        sessions.forEach(session => {
+          const debugLog = path.join(logsBaseDir, session, 'debug.log');
+          if (fs.existsSync(debugLog)) {
+            const stats = fs.statSync(debugLog);
+            console.log(`  📁 ${session}`);
+            console.log(`     ${t('cli.commands.logs.createdAt')} ${stats.birthtime.toLocaleString()}`);
+            console.log(`     ${t('cli.commands.logs.fileSize')} ${(stats.size / 1024).toFixed(2)} KB`);
+          }
+        });
+        return;
+      } catch (err) {
+        console.error(t('cli.commands.logs.readError'), err.message);
+        return;
+      }
+    }
+    
+    // 查看特定session或最新的日志
+    let targetLog;
+    
+    if (options.session) {
+      targetLog = path.join(logsBaseDir, options.session, 'debug.log');
+    } else {
+      // 找最新的日志
+      try {
+        if (!fs.existsSync(logsBaseDir)) {
+          console.log(t('cli.commands.logs.noLogs'));
+          console.log(t('cli.commands.logs.generatedTip'));
+          return;
+        }
+        
+        const sessions = fs.readdirSync(logsBaseDir)
+          .map(name => ({
+            name,
+            path: path.join(logsBaseDir, name, 'debug.log'),
+            time: fs.existsSync(path.join(logsBaseDir, name, 'debug.log')) 
+              ? fs.statSync(path.join(logsBaseDir, name, 'debug.log')).mtime 
+              : 0
+          }))
+          .filter(s => s.time > 0)
+          .sort((a, b) => b.time - a.time);
+        
+        if (sessions.length === 0) {
+          console.log(t('cli.commands.logs.noDebugLogs'));
+          return;
+        }
+        
+        targetLog = sessions[0].path;
+        console.log(t('cli.commands.logs.viewingLatest'), sessions[0].name);
+      } catch (err) {
+        console.error(t('cli.commands.logs.findError'), err.message);
+        return;
+      }
+    }
+    
+    // 检查日志文件是否存在
+    if (!fs.existsSync(targetLog)) {
+      console.log(t('cli.commands.logs.fileNotExist'), targetLog);
+      return;
+    }
+    
+    // 显示日志内容
+    if (options.watch) {
+      // 监控模式：等待新的session
+      console.log(t('cli.commands.logs.waitingSession'));
+      console.log(t('cli.commands.logs.monitoringDir'), logsBaseDir + '\n');
+      
+      const startTime = Date.now();
+      let currentTail = null;
+      let monitoredLog = null;
+      
+      // 监控目录，找到新的或更新的debug.log
+      const checkForLogs = () => {
+        if (!fs.existsSync(logsBaseDir)) {
+          // 目录还不存在，继续等待
+          setTimeout(checkForLogs, 1000);
+          return;
+        }
+        
+        // 遍历所有session查找debug.log
+        const sessions = fs.readdirSync(logsBaseDir);
+        for (const session of sessions) {
+          const debugLog = path.join(logsBaseDir, session, 'debug.log');
+          
+          if (fs.existsSync(debugLog)) {
+            const stats = fs.statSync(debugLog);
+            // 检查文件修改时间是否在监控开始之后
+            if (stats.mtimeMs > startTime && debugLog !== monitoredLog) {
+              console.log(t('cli.commands.logs.foundActive'), session);
+              console.log(t('cli.commands.logs.startTracking'), debugLog + '\n');
+              
+              // 如果已有tail进程，先停止
+              if (currentTail) {
+                currentTail.kill();
+              }
+              
+              monitoredLog = debugLog;
+              
+              // 开始tail -f
+              const { spawn } = require('child_process');
+              currentTail = spawn('tail', ['-f', debugLog]);
+              
+              currentTail.stdout.on('data', (data) => {
+                process.stdout.write(data);
+              });
+              
+              currentTail.stderr.on('data', (data) => {
+                console.error(`Error: ${data}`);
+              });
+              
+              currentTail.on('close', (code) => {
+                if (code !== 0 && code !== null) {
+                  console.log(t('cli.commands.logs.tailExited'), code);
+                }
+                currentTail = null;
+              });
+              
+              return; // 找到后停止这次检查
+            }
+          }
+        }
+        
+        // 继续检查
+        setTimeout(checkForLogs, 1000);
+      };
+      
+      checkForLogs();
+      
+      // 处理Ctrl+C
+      process.on('SIGINT', () => {
+        if (currentTail) {
+          currentTail.kill();
+        }
+        console.log(t('cli.commands.logs.stopMonitor'));
+        process.exit(0);
+      });
+      
+      return; // 阻止执行后续代码
+    } else if (options.follow) {
+      // 传统的 tail -f 模式：跟踪现有日志
+      console.log(t('cli.commands.logs.realTimeTracking'));
+      const { spawn } = require('child_process');
+      const tail = spawn('tail', ['-f', targetLog]);
+      
+      tail.stdout.on('data', (data) => {
+        process.stdout.write(data);
+      });
+      
+      tail.stderr.on('data', (data) => {
+        console.error(`Error: ${data}`);
+      });
+      
+      tail.on('close', (code) => {
+        if (code !== 0) {
+          console.log(t('cli.commands.logs.tailExited'), code);
+        }
+      });
+      
+      // 处理Ctrl+C
+      process.on('SIGINT', () => {
+        tail.kill();
+        console.log(t('cli.commands.logs.stopTracking'));
+        process.exit(0);
+      });
+      
+      return;
+    } else {
+      // 显示最后N行
+      try {
+        const content = fs.readFileSync(targetLog, 'utf-8');
+        const lines = content.split('\n');
+        const lastLines = lines.slice(-parseInt(options.lines) - 1).join('\n');
+        
+        console.log('');
+        console.log('─'.repeat(60));
+        console.log(lastLines);
+        console.log('─'.repeat(60));
+        console.log(t('cli.commands.logs.logLocation'), targetLog);
+        console.log(t('cli.commands.logs.useTailTip'));
+      } catch (err) {
+        console.error(t('cli.commands.logs.readFileError'), err.message);
+      }
+    }
+  });
+
+// clean 命令 - 清理日志
+program
+  .command('clean')
+  .description(t('cli.commands.clean.description'))
+  .option('--all', t('cli.commands.clean.allOption'))
+  .option('--days <number>', t('cli.commands.clean.daysOption'), '7')
+  .action(async (options) => {
+    console.log(t('cli.commands.clean.cleaning'));
+    
+    const projectDir = process.cwd();
+    const projectName = projectDir.replace(/\//g, '-');
+    const logsBaseDir = options.all ? '/tmp/cc-supervisor' : `/tmp/cc-supervisor/${projectName}`;
+    
+    if (!fs.existsSync(logsBaseDir)) {
+      console.log(t('cli.commands.clean.noNeedClean'));
+      return;
+    }
+    
+    try {
+      const days = parseInt(options.days);
+      const cutoffTime = Date.now() - (days * 24 * 60 * 60 * 1000);
+      let cleanedCount = 0;
+      
+      // 递归清理旧日志
+      const cleanDir = (dir) => {
+        const items = fs.readdirSync(dir);
+        items.forEach(item => {
+          const itemPath = path.join(dir, item);
+          const stats = fs.statSync(itemPath);
+          
+          if (stats.isDirectory()) {
+            // 检查目录时间
+            if (stats.mtime.getTime() < cutoffTime) {
+              fs.rmSync(itemPath, { recursive: true, force: true });
+              cleanedCount++;
+              console.log(`  ${t('cli.commands.clean.deleted')} ${item}`);
+            } else if (options.all) {
+              cleanDir(itemPath); // 递归清理子目录
+            }
+          }
+        });
+      };
+      
+      cleanDir(logsBaseDir);
+      
+      if (cleanedCount > 0) {
+        console.log(t('cli.commands.clean.cleanedCount', { count: cleanedCount }));
+      } else {
+        console.log(t('cli.commands.clean.noOldLogs'));
+      }
+      
+    } catch (err) {
+      console.error(t('cli.commands.clean.error'), err.message);
+    }
+  });
+
+// pause 命令 - 暂停监工
+program
+  .command('pause')
+  .description(t('cli.commands.pause.description'))
+  .action(async () => {
+    try {
+      const configPath = path.join(process.cwd(), '.claude', 'cc-supervisor-config.json');
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configPath)) {
+        console.error(t('cli.commands.pause.notInitialized'));
+        process.exit(1);
+      }
+      
+      // 读取现有配置
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      // 设置暂停状态
+      config.paused = true;
+      config.pausedAt = new Date().toISOString();
+      
+      // 写回配置文件
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      
+      console.log(t('cli.commands.pause.success'));
+      console.log(t('cli.commands.pause.reminder'));
+      
+    } catch (err) {
+      console.error(t('cli.commands.pause.error'), err.message);
+      process.exit(1);
+    }
+  });
+
+// resume 命令 - 恢复监工
+program
+  .command('resume')
+  .description(t('cli.commands.resume.description'))
+  .action(async () => {
+    try {
+      const configPath = path.join(process.cwd(), '.claude', 'cc-supervisor-config.json');
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configPath)) {
+        console.error(t('cli.commands.resume.notInitialized'));
+        process.exit(1);
+      }
+      
+      // 读取现有配置
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      // 检查是否已暂停
+      if (!config.paused) {
+        console.log(t('cli.commands.resume.notPaused'));
+        return;
+      }
+      
+      // 清除暂停状态
+      delete config.paused;
+      delete config.pausedAt;
+      
+      // 写回配置文件
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      
+      console.log(t('cli.commands.resume.success'));
+      
+    } catch (err) {
+      console.error(t('cli.commands.resume.error'), err.message);
+      process.exit(1);
+    }
+  });
+
+// status 命令 - 查看监工状态
+program
+  .command('status')
+  .description(t('cli.commands.status.description'))
+  .action(async () => {
+    try {
+      const configPath = path.join(process.cwd(), '.claude', 'cc-supervisor-config.json');
+      
+      // 检查配置文件是否存在
+      if (!fs.existsSync(configPath)) {
+        console.error(t('cli.commands.status.notInitialized'));
+        process.exit(1);
+      }
+      
+      // 读取配置
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      
+      if (config.paused) {
+        const pausedAt = new Date(config.pausedAt);
+        const duration = Math.floor((Date.now() - pausedAt) / 1000 / 60); // 分钟
+        console.log(t('cli.commands.status.paused', { duration, time: pausedAt.toLocaleString() }));
+      } else {
+        console.log(t('cli.commands.status.active'));
+      }
+      
+      // 显示其他配置信息
+      console.log(t('cli.commands.status.locale', { locale: config.locale || 'zh-CN' }));
+      if (config.claude_command) {
+        const cmd = `${config.claude_command.base} ${(config.claude_command.args || []).join(' ')}`.trim();
+        console.log(t('cli.commands.status.command', { command: cmd }));
+      }
+      
+    } catch (err) {
+      console.error(t('cli.commands.status.error'), err.message);
+      process.exit(1);
+    }
+  });
+
+// 解析命令行参数
+program.parse();
+
+// 如果没有提供命令，显示帮助
+if (!process.argv.slice(2).length) {
+  program.outputHelp();
+}

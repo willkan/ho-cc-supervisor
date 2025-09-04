@@ -1,0 +1,6 @@
+{
+  "claude_command": {
+    "base": "claude",
+    "args": ["-p", "--dangerously-skip-permissions"]
+  }
+}
