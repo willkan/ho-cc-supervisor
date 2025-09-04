@@ -23,23 +23,24 @@ Claude智能监工 - 防止Claude偷懒的极简Hook系统
 
 ## 🔄 工作原理 - 监督反馈循环
 
-```mermaid
-flowchart TB
-    A[用户 ↔ 工作Claude] --> B[工作Claude尝试停止]
-    B --> C{Stop Hook}
-    C --> D[监工Claude检查]
-    D --> E{质量?}
-    E -->|❌ 问题| F[阻止]
-    E -->|✅ 通过| G[停止]
-    F -.->|循环| B
-    
-    style A fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
-    style B fill:#fff3e0,stroke:#333,stroke-width:2px,color:#000
-    style C fill:#fff8e1,stroke:#333,stroke-width:2px,color:#000
-    style D fill:#e8f5e9,stroke:#333,stroke-width:2px,color:#000
-    style E fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
-    style F fill:#ffcdd2,stroke:#d32f2f,stroke-width:3px,color:#000
-    style G fill:#c8e6c9,stroke:#388e3c,stroke-width:3px,color:#000
+```
+    用户 ↔ 工作Claude
+            ↓
+    工作Claude尝试停止 ←─────────┐
+            ↓                   │
+      🔍 Stop Hook              │
+            ↓                   │
+    监工Claude检查               │
+            ↓                   │
+         质量?                  │
+        /    \                  │
+       /      \                 │
+    ❌ 问题  ✅ 通过             │
+       │       │                │
+     阻止    停止                │
+       │     退出                │
+       └────────────────────────┘
+         反馈循环：继续工作
 ```
 
 ## 🎭 真实效果演示

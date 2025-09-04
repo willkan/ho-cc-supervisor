@@ -23,23 +23,24 @@ Consider these factors when deciding whether to enable the supervisor for your p
 
 ## 🔄 How It Works - Supervision Feedback Loop
 
-```mermaid
-flowchart TB
-    A[User ↔ Worker Claude] --> B[Worker Claude tries to stop]
-    B --> C{Stop Hook}
-    C --> D[Supervisor Claude checks]
-    D --> E{Quality?}
-    E -->|❌ Issues| F[BLOCK]
-    E -->|✅ Pass| G[STOP]
-    F -.->|Loop| B
-    
-    style A fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
-    style B fill:#fff3e0,stroke:#333,stroke-width:2px,color:#000
-    style C fill:#fff8e1,stroke:#333,stroke-width:2px,color:#000
-    style D fill:#e8f5e9,stroke:#333,stroke-width:2px,color:#000
-    style E fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
-    style F fill:#ffcdd2,stroke:#d32f2f,stroke-width:3px,color:#000
-    style G fill:#c8e6c9,stroke:#388e3c,stroke-width:3px,color:#000
+```
+    User ↔ Worker Claude
+            ↓
+    Worker Claude tries to stop ←────────┐
+            ↓                           │
+      🔍 Stop Hook                      │
+            ↓                           │
+    Supervisor Claude checks            │
+            ↓                           │
+        Quality?                        │
+        /      \                        │
+       /        \                       │
+    ❌ Issues  ✅ Pass                  │
+       │          │                     │
+    BLOCK      STOP                     │
+       │         Exit                   │
+       └────────────────────────────────┘
+         FEEDBACK LOOP: Continue working
 ```
 
 ## 🎭 Real-World Effect Demonstration
