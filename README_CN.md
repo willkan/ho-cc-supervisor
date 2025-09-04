@@ -25,18 +25,18 @@ Claude智能监工 - 防止Claude偷懒的极简Hook系统
 
 ```mermaid
 flowchart TB
-    A[用户 ↔ Claude] --> B[Claude尝试停止]
+    A[用户 ↔ 工作Claude] --> B[工作Claude尝试停止]
     B --> C{Stop Hook}
-    C --> D[监工检查]
+    C --> D[监工Claude检查]
     D --> E{质量?}
     E -->|❌ 问题| F[阻止]
-    E -->|✅ 通过| G[允许]
+    E -->|✅ 通过| G[停止]
     F -.->|循环| B
     
     style A fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
     style B fill:#fff3e0,stroke:#333,stroke-width:2px,color:#000
     style C fill:#fff8e1,stroke:#333,stroke-width:2px,color:#000
-    style D fill:#f3e5f5,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#e8f5e9,stroke:#333,stroke-width:2px,color:#000
     style E fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
     style F fill:#ffcdd2,stroke:#d32f2f,stroke-width:3px,color:#000
     style G fill:#c8e6c9,stroke:#388e3c,stroke-width:3px,color:#000
@@ -49,67 +49,70 @@ flowchart TB
 ```diff
 用户："请实现用户认证功能"
 
-- Claude: "我基本上完成了认证功能。
-          主要部分应该能工作。
-          您还需要我继续做什么吗？"
+- 工作Claude: "我基本上完成了认证功能。
+              主要部分应该能工作。
+              您还需要我继续做什么吗？"
 
-[Claude尝试停止对话]
-[Stop Hook激活 - 监工在后台检查质量]
-[监工检测到偷懒行为：模糊词汇、缺少细节]
-[停止被阻止 - Claude自动继续工作]
+! [工作Claude尝试停止对话]
+! [Stop Hook激活 - 监工Claude在后台检查质量]
+! [监工Claude检测到偷懒行为：模糊词汇、缺少细节]
+! [监工Claude阻止停止 - 工作Claude自动继续]
 
-+ Claude: "让我提供完整的实现：
-          ✅ 创建了带bcrypt密码加密的用户模型
-          ✅ 添加了JWT令牌生成和验证
-          ✅ 实现了登录/登出/注册接口
-          ✅ 添加了受保护路由的中间件
-          ✅ 所有测试通过 (8/8)
-          
-          认证系统已完全实现，包括：
-          - 使用bcrypt安全存储密码（12轮加密）
-          - JWT令牌24小时过期
-          - 基于角色的访问控制
-          - 所有接口的输入验证"
++ 工作Claude: "让我提供完整的实现：
+              ✅ 创建了带bcrypt密码加密的用户模型
+              ✅ 添加了JWT令牌生成和验证
+              ✅ 实现了登录/登出/注册接口
+              ✅ 添加了受保护路由的中间件
+              ✅ 所有测试通过 (8/8)
+              
+              认证系统已完全实现，包括：
+              - 使用bcrypt安全存储密码（12轮加密）
+              - JWT令牌24小时过期
+              - 基于角色的访问控制
+              - 所有接口的输入验证"
 
-[Claude成功停止 - 质量检查通过]
+! [工作Claude成功停止 - 监工Claude批准质量]
 ```
 
 ### 示例1：捕获模糊话术
-```
+```diff
 ❌ 阻止场景：
-Claude: "基本完成了，应该可以工作"
+
+- 工作Claude: "基本完成了，应该可以工作"
         ↓
-[监工阻止：检测到模糊词汇]
+! [监工Claude阻止：检测到模糊词汇]
         ↓
-Claude继续: "让我具体说明我实现了什么..."
++ 工作Claude继续: "让我具体说明我实现了什么..."
 ```
 
 ### 示例2：自动批准合理方案
-```
+```diff
 ✅ 自动批准场景：
-Claude: "我已创建详细的storylines计划：
-         1. 数据库架构设计
-         2. API接口结构
-         3. 前端组件设计...
-         [完整的10步计划]
-         您是否批准这个storylines计划？"
+
+- 工作Claude: "我已创建详细的storylines计划：
+              1. 数据库架构设计
+              2. API接口结构
+              3. 前端组件设计...
+              [完整的10步计划]
+              您是否批准这个storylines计划？"
         ↓
-[监工自动批准：检测到完整计划]
+! [监工Claude自动批准：检测到完整计划]
         ↓
-Claude继续: "开始实施第1步..."
++ 工作Claude继续: "开始实施第1步..."
 ```
 
 ### 示例3：阻止TODO停顿
-```
+```diff
 ❌ 阻止场景：
-Claude: "TODO清单：
-         1. 创建用户模型
-         2. 添加认证路由
-         需要继续吗？"
+
+- 工作Claude: "TODO清单：
+              1. 创建用户模型
+              2. 添加认证路由
+              需要继续吗？"
         ↓
-[监工阻止：检测到不必要的停顿]
+! [监工Claude阻止：检测到不必要的停顿]
         ↓
-Claude继续: "正在处理任务1：创建用户模型..."
++ 工作Claude继续: "正在处理任务1：创建用户模型..."
 ```
 
 ## 🚀 快速开始

@@ -25,18 +25,18 @@ Consider these factors when deciding whether to enable the supervisor for your p
 
 ```mermaid
 flowchart TB
-    A[User ↔ Claude] --> B[Claude tries to stop]
+    A[User ↔ Worker Claude] --> B[Worker Claude tries to stop]
     B --> C{Stop Hook}
-    C --> D[Supervisor checks]
+    C --> D[Supervisor Claude checks]
     D --> E{Quality?}
     E -->|❌ Issues| F[BLOCK]
-    E -->|✅ Pass| G[ALLOW]
+    E -->|✅ Pass| G[STOP]
     F -.->|Loop| B
     
     style A fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000
     style B fill:#fff3e0,stroke:#333,stroke-width:2px,color:#000
     style C fill:#fff8e1,stroke:#333,stroke-width:2px,color:#000
-    style D fill:#f3e5f5,stroke:#333,stroke-width:2px,color:#000
+    style D fill:#e8f5e9,stroke:#333,stroke-width:2px,color:#000
     style E fill:#fafafa,stroke:#333,stroke-width:2px,color:#000
     style F fill:#ffcdd2,stroke:#d32f2f,stroke-width:3px,color:#000
     style G fill:#c8e6c9,stroke:#388e3c,stroke-width:3px,color:#000
@@ -49,67 +49,70 @@ flowchart TB
 ```diff
 User: "Please implement the user authentication feature"
 
-- Claude: "I've basically completed the authentication. 
-          The main parts should work fine. 
-          Do you need me to continue with anything else?"
+- Worker Claude: "I've basically completed the authentication. 
+                 The main parts should work fine. 
+                 Do you need me to continue with anything else?"
 
-[Claude attempts to stop the conversation]
-[Stop Hook activates - Supervisor checks quality in background]
-[Supervisor detects lazy behavior: vague terms, no details]
-[Stop blocked - Claude continues automatically]
+! [Worker Claude attempts to stop the conversation]
+! [Stop Hook activates - Supervisor Claude checks quality in background]
+! [Supervisor Claude detects lazy behavior: vague terms, no details]
+! [Supervisor Claude blocks stop - Worker Claude continues automatically]
 
-+ Claude: "Let me provide a complete implementation:
-          ✅ Created user model with bcrypt password hashing
-          ✅ Added JWT token generation and validation
-          ✅ Implemented login/logout/register endpoints
-          ✅ Added middleware for protected routes
-          ✅ All tests passing (8/8)
-          
-          The authentication system is fully functional with:
-          - Secure password storage using bcrypt (12 rounds)
-          - JWT tokens with 24h expiration
-          - Role-based access control
-          - Input validation on all endpoints"
++ Worker Claude: "Let me provide a complete implementation:
+                 ✅ Created user model with bcrypt password hashing
+                 ✅ Added JWT token generation and validation
+                 ✅ Implemented login/logout/register endpoints
+                 ✅ Added middleware for protected routes
+                 ✅ All tests passing (8/8)
+                 
+                 The authentication system is fully functional with:
+                 - Secure password storage using bcrypt (12 rounds)
+                 - JWT tokens with 24h expiration
+                 - Role-based access control
+                 - Input validation on all endpoints"
 
-[Claude stops successfully - quality check passed]
+! [Worker Claude stops successfully - Supervisor Claude approved quality]
 ```
 
 ### Example 1: Catching Vague Language
-```
+```diff
 ❌ BLOCKED SCENARIO:
-Claude: "Basically done, should work fine"
+
+- Worker Claude: "Basically done, should work fine"
         ↓
-[Supervisor blocks: Vague terms detected]
+! [Supervisor Claude blocks: Vague terms detected]
         ↓
-Claude continues: "Let me be specific about what I implemented..."
++ Worker Claude continues: "Let me be specific about what I implemented..."
 ```
 
 ### Example 2: Auto-Approval for Legitimate Plans
-```
+```diff
 ✅ AUTO-APPROVED SCENARIO:
-Claude: "I've created a detailed storylines plan:
-         1. Database schema design
-         2. API endpoint structure
-         3. Frontend components...
-         [Full 10-step plan]
-         Do you approve this storylines plan?"
+
+- Worker Claude: "I've created a detailed storylines plan:
+                 1. Database schema design
+                 2. API endpoint structure
+                 3. Frontend components...
+                 [Full 10-step plan]
+                 Do you approve this storylines plan?"
         ↓
-[Supervisor auto-approves: Complete plan detected]
+! [Supervisor Claude auto-approves: Complete plan detected]
         ↓
-Claude continues: "Starting implementation of step 1..."
++ Worker Claude continues: "Starting implementation of step 1..."
 ```
 
 ### Example 3: Blocking TODO Pauses
-```
+```diff
 ❌ BLOCKED SCENARIO:
-Claude: "TODO list:
-         1. Create user model
-         2. Add auth routes
-         Should I continue?"
+
+- Worker Claude: "TODO list:
+                 1. Create user model
+                 2. Add auth routes
+                 Should I continue?"
         ↓
-[Supervisor blocks: Unnecessary pause detected]
+! [Supervisor Claude blocks: Unnecessary pause detected]
         ↓
-Claude continues: "Working on task 1: Creating user model..."
++ Worker Claude continues: "Working on task 1: Creating user model..."
 ```
 
 ## 🚀 Quick Start
