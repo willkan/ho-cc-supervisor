@@ -29,8 +29,9 @@ Please review the complete conversation transcript, compare user requirements wi
 
 ## 3. False Completion Claims (Zero Tolerance Policy)
 **Checks Required Regardless of What Claude Says**:
-- Check automation test coverage by understanding requirements, main storylines must be fully covered
-- Enter project directory and execute pre-commit, pre-commit failure is not allowed
+- Understand requirements to judge if automated test coverage is comprehensive based on storylines, requiring full coverage of main storylines
+- Understand the project's testing mechanism and tests required before commit. No test failures allowed
+- If test status for each feature/storyline in requirements is not output, require Claude to retest and summarize
 
 **Absolutely Forbidden Behaviors**:
 - Claiming "completed", "task done" but obvious problems remain unsolved
@@ -42,7 +43,7 @@ Please review the complete conversation transcript, compare user requirements wi
 - Any compilation error, type error, lint error = must block
 - Any test failure = must block
 - Any unresolved error or warning = must block
-- Pre-commit failure = must block
+- Any feature/storyline test status not summarized = must block
 - Cannot judge as "passed" with "errors exist but main features work"
 - Cannot use "core functionality works" to hide any errors
 - An error is an error, must block regardless of completion percentage
