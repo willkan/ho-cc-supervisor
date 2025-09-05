@@ -279,8 +279,27 @@ if [ -f "$transcript_path" ] && [ -s "$transcript_path" ]; then
     log_debug "$MSG_TRANSCRIPT_COPIED $transcript_ref"
     # 记录对话摘要（最后几条）
     log_debug "$MSG_TRANSCRIPT_SUMMARY"
-    tail -3 "$transcript_path" | while IFS= read -r line; do
-        echo "$line" | jq -r '"[\(.role // "unknown")] \(.content // "")"' >> "$DEBUG_LOG" 2>/dev/null
+    tail -5 "$transcript_path" | while IFS= read -r line; do
+        # 处理JSONL格式的对话记录
+        if echo "$line" | jq -e . >/dev/null 2>&1; then
+            # 解析Claude Code的JSONL格式
+            role=$(echo "$line" | jq -r '.message.role // .type // "unknown"' 2>/dev/null)
+            content=$(echo "$line" | jq -r '.message.content // .summary // ""' 2>/dev/null)
+            
+            # 如果content是数组，提取text部分
+            if [ "$content" != "" ] && echo "$content" | jq -e 'type == "array"' >/dev/null 2>&1; then
+                content=$(echo "$content" | jq -r '.[0].text // .[0] // ""' 2>/dev/null)
+            fi
+            
+            # 截断过长的内容
+            if [ ${#content} -gt 200 ]; then
+                content="${content:0:200}..."
+            fi
+            
+            log_debug "[$role] $content"
+        else
+            log_debug "[parse_error] $line"
+        fi
     done
 else
     transcript_ref=""
