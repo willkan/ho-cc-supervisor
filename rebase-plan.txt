@@ -1,0 +1,49 @@
+# Rebase plan - 保留主要功能提交，合并小修复
+
+# === 初始版本 ===
+pick ddd791a Initial commit
+
+# === 早期开发（合并所有测试提交）===  
+pick 23bed9b 完成 Supervisor-ME MVP 全部功能
+# squash 所有 test commit 和 Part 1-5
+
+# === 架构转型 ===
+pick 75368114 refactor: 架构转型 - 从双窗口监控到 Hooks 验证方案
+pick 416ccbe7 refactor: 重构为透明代理架构 (Phase 6)
+
+# === 品牌重塑 ===
+pick 73e782d7 refactor: Rebrand to @ho/cc-supervisor
+
+# === 核心功能实现 ===
+pick 31101bb3 feat: 实现简单的验证提示模版系统
+pick 9ad56bc4 feat: 实现动态session跟踪和自动问题修复
+
+# === v3.0 系列核心功能 ===
+pick 7b82db64 release: v3.1.0 - 智能批准与严格监工并存
+pick 51e87117 feat: 实现完整的国际化支持
+pick 427d85dc feat: 添加智能批准机制和实现偏离检测
+pick 249e691b feat: 强化监工规则实施零容忍政策
+pick bf3d650 feat: 添加checkedList调试功能和修复对话摘要
+pick 0c5a0f0 feat: 完整实现Hook脚本的i18n支持
+pick 9a0b505 feat: 增强监工规则添加pre-commit强制检查
+pick 49d65d2 feat: 添加暂停/恢复监工功能
+pick 4a5f3f5 feat: 更新规则模板添加进入project目录步骤
+
+# === 重要修复 ===
+pick dee33d9 fix: 修复自动批准逻辑并简化规则
+pick dac0339 fix: 强制监工只输出JSON格式
+pick ec51da8 fix: 修复项目目录解析和日志目录一致性问题
+pick 1053c73 feat: 支持子目录自动向上查找监工规则
+pick a19d713 fix: 改进proxy success后JSON提取逻辑
+
+# === CI/CD 和发布准备 ===
+pick 05cb7d2 feat: Add GitHub Actions for CI/CD and npm publishing
+pick 8716b44 fix: 修复 CI 报错和版本号同步问题
+
+# === 文档优化（合并所有文档相关）===
+pick a247ed2 docs: 文档完善和npm兼容性优化
+# 合并所有 Mermaid、ASCII 图表相关提交
+
+# === 版本发布 ===
+pick 6b0c057 release: v1.0.0-alpha.3 增强监工规则和测试要求
+pick 9a1ee81 release: v1.0.0 正式版发布

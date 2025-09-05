@@ -80,11 +80,14 @@ function loadSavedLocale() {
 // 初始加载默认语言
 loadSavedLocale();
 
+// 读取版本号
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+
 // 设置版本和描述
 program
   .name('cc-supervisor')
   .description(t('cli.description'))
-  .version(t('cli.version'));
+  .version(packageJson.version);
 
 // init 命令 - 初始化监工系统
 program

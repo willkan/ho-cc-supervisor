@@ -168,6 +168,19 @@ cc-supervisor clean --days 0
 cc-supervisor clean --all
 ```
 
+### Supervisor Control
+
+```bash
+# Pause supervisor checks (for inquiry-only conversations)
+cc-supervisor pause
+
+# Resume supervisor checks
+cc-supervisor resume
+
+# Check supervisor status
+cc-supervisor status
+```
+
 ## 📋 Supervisor Rules
 
 The supervisor checks for these lazy behaviors:
@@ -270,7 +283,7 @@ MIT
 A: Check `.claude/settings.json` configuration, ensure testing in new Claude session
 
 **Q: How to temporarily disable supervisor?**
-A: Delete or rename `.claude/cc-supervisor-rules.txt`
+A: Use `cc-supervisor pause` command or delete/rename `.claude/cc-supervisor-rules.txt`
 
 **Q: Supervisor check timeout?**
 A: Default timeout is 20 minutes, adjustable in `settings.json`

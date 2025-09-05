@@ -168,6 +168,19 @@ cc-supervisor clean --days 0
 cc-supervisor clean --all
 ```
 
+### 监工控制
+
+```bash
+# 暂停监工检查（用于仅询问类对话）
+cc-supervisor pause
+
+# 恢复监工检查
+cc-supervisor resume
+
+# 查看监工状态
+cc-supervisor status
+```
+
 ## 📋 监工规则
 
 监工检查以下偷懒行为：
@@ -270,7 +283,7 @@ MIT
 A: 检查`.claude/settings.json`配置，确保在新Claude会话中测试
 
 **Q: 如何临时禁用监工？**
-A: 删除或重命名`.claude/cc-supervisor-rules.txt`
+A: 使用`cc-supervisor pause`命令或删除/重命名`.claude/cc-supervisor-rules.txt`
 
 **Q: 监工检查超时？**
 A: 默认超时为20分钟，可在`settings.json`中调整

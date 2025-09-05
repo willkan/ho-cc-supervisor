@@ -1,7 +1,6 @@
 {
   "cli": {
     "description": "Claude Smart Supervisor - A minimalist Hook system to prevent Claude from being lazy",
-    "version": "1.0.0",
     "commands": {
       "init": {
         "description": "Initialize Claude supervisor system",
