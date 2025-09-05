@@ -1,6 +1,6 @@
 {
   "name": "ho-cc-supervisor",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Claude智能监工 - 防止Claude偷懒的极简Hook系统",
   "main": ".bin/cc-supervisor",
   "bin": {

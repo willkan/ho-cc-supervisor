@@ -152,11 +152,55 @@ else
     MSG_PAUSED_REMINDER="仅用于询问类对话。运行 'cc-supervisor resume' 恢复监工"
 fi
 
+# 增强的信号处理函数
+handle_sigterm() {
+    log_debug "$MSG_SIGNAL_TERM"
+    log_debug "📊 终止时状态信息:"
+    log_debug "  • 进程PID: $SCRIPT_PID"
+    log_debug "  • 运行时长: $(($(date +%s) - START_TIME))秒"
+    log_debug "  • 当前阶段: $CURRENT_STAGE"
+    log_debug "  • 项目目录: $PROJECT_DIR"
+    log_debug "  • 会话目录: $SESSION_DIR" 
+    log_debug "  • 是否调用监工: $SUPERVISOR_CALLED"
+    [ -n "$SUPERVISOR_PID" ] && log_debug "  • 监工子进程PID: $SUPERVISOR_PID"
+    log_debug "🔍 可能的终止原因:"
+    log_debug "  1. Claude Code超时终止 (默认20分钟)"
+    log_debug "  2. 用户手动终止 (Ctrl+C 或 kill)"
+    log_debug "  3. 系统资源不足"
+    log_debug "  4. 监工Claude卡住未响应"
+    log_debug "💡 调试建议:"
+    log_debug "  • 检查监工是否卡在某个提示上"
+    log_debug "  • 考虑增加超时时间 (.claude/settings.json)"
+    log_debug "  • 查看系统资源使用情况"
+    exit 143
+}
+
+handle_sigint() {
+    log_debug "$MSG_SIGNAL_INT"
+    log_debug "🛑 用户中断Hook执行 (Ctrl+C)"
+    log_debug "  • 当前阶段: $CURRENT_STAGE"
+    log_debug "  • 运行时长: $(($(date +%s) - START_TIME))秒"
+    exit 130
+}
+
+handle_sighup() {
+    log_debug "$MSG_SIGNAL_HUP"
+    log_debug "🔌 终端连接断开"
+    log_debug "  • 当前阶段: $CURRENT_STAGE"
+    exit 129
+}
+
 # 设置信号捕获（记录被杀原因）
-trap 'log_debug "$MSG_SIGNAL_TERM"; exit 143' TERM
-trap 'log_debug "$MSG_SIGNAL_INT"; exit 130' INT
-trap 'log_debug "$MSG_SIGNAL_HUP"; exit 129' HUP
+trap 'handle_sigterm' TERM
+trap 'handle_sigint' INT
+trap 'handle_sighup' HUP
 trap 'log_debug "$MSG_HOOK_EXIT"' EXIT
+
+# 初始化状态跟踪变量
+START_TIME=$(date +%s)
+CURRENT_STAGE="初始化"
+SUPERVISOR_CALLED="否"
+SUPERVISOR_PID=""
 
 # 记录开始
 log_debug "$MSG_HOOK_START"
@@ -207,6 +251,7 @@ log_debug "$MSG_RULES_FOUND $supervisor_template"
 
 # 读取监工配置（从监工规则所在的目录）
 # 配置文件和语言设置已在前面读取
+CURRENT_STAGE="读取配置"
 if [ -f "$CONFIG_FILE" ]; then
     log_debug "$MSG_READING_CONFIG $CONFIG_FILE"
     CLAUDE_BASE=$(jq -r '.claude_command.base // "claude"' "$CONFIG_FILE")
@@ -266,6 +311,8 @@ $(echo "$input" | jq -r '.')
 OUTPUT:"
 
 # 记录监工提示摘要
+CURRENT_STAGE="调用监工"
+SUPERVISOR_CALLED="是"
 log_debug "$MSG_CALLING_SUPERVISOR ($CLAUDE_CMD)"
 
 # 在隔离目录中调用监工
@@ -277,7 +324,8 @@ log_debug "$MSG_CALLING_CLAUDE $CLAUDE_CMD..."
 supervisor_result_raw=$(echo "$system_prompt" | $CLAUDE_CMD 2>"${DEBUG_LOG}.stderr")
 exit_code=$?
 
-# 记录退出码
+# 记录退出码和更新阶段
+CURRENT_STAGE="解析监工结果"
 log_debug "$MSG_SUPERVISOR_RETURNED $exit_code"
 
 # 处理非零退出码
@@ -349,6 +397,7 @@ fi
 if [ "$decision" = "block" ]; then
     # 发现问题，阻止停止
     reason=$(echo "$supervisor_result" | jq -r '.reason // "未提供原因"' 2>/dev/null || echo "监工发现问题但未正确返回JSON")
+    CURRENT_STAGE="阻止工作"
     log_debug "$MSG_DECISION_BLOCK"
     log_debug "$MSG_BLOCK_REASON $reason"
     
@@ -359,6 +408,7 @@ if [ "$decision" = "block" ]; then
     echo "$supervisor_result" | jq 'del(.checkedList)' 2>/dev/null || echo "$supervisor_result"
 elif [ "$decision" = "undefined" ] || [ "$decision" = "null" ]; then
     # 工作合格，允许停止
+    CURRENT_STAGE="允许停止"
     log_debug "$MSG_DECISION_PASS"
     
     # 清理临时目录（但保留一段时间供调试）
